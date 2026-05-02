@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArtVerse — Online Sanat Galerisi & Atölye Rezervasyon Sistemi</title>
+    <meta name="description" content="Türkiye'nin en kapsamlı online sanat galerisi. Eserleri keşfedin, atölyelere katılın, sanatı yaşayın.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- NAV -->
+    <nav class="navbar" id="navbar">
+        <div class="nav-inner">
+            <a href="#" class="logo" id="nav-logo">
+                <span class="logo-icon">⬡</span>
+                <span class="logo-text">ArtVerse</span>
+            </a>
+            <ul class="nav-links" id="nav-links">
+                <li><a href="#" class="nav-link active" data-page="home" id="nav-home">Ana Sayfa</a></li>
+                <li><a href="#" class="nav-link" data-page="artworks" id="nav-artworks">Eserler</a></li>
+                <li><a href="#" class="nav-link" data-page="events" id="nav-events">Etkinlikler</a></li>
+                <li><a href="#" class="nav-link" data-page="admin" id="nav-admin">Dashboard</a></li>
+            </ul>
+            <div class="nav-actions">
+                <button class="btn-ghost" id="btn-login">Giriş Yap</button>
+                <button class="btn-primary" id="btn-register">Kayıt Ol</button>
+            </div>
+            <button class="hamburger" id="hamburger" aria-label="Menü">
+                <span></span><span></span><span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- PAGES -->
+    <main id="main-content">
+
+        <!-- ========== HOME PAGE ========== -->
+        <section class="page active" id="page-home">
+
+            <!-- Hero -->
+            <div class="hero">
+                <div class="hero-bg">
+                    <div class="hero-orb orb-1"></div>
+                    <div class="hero-orb orb-2"></div>
+                    <div class="hero-orb orb-3"></div>
+                </div>
+                <div class="hero-content">
+                    <span class="hero-badge">✦ Türkiye'nin Dijital Sanat Merkezi</span>
+                    <h1 class="hero-title">Sanatı<br><em>Yeniden</em> Keşfet</h1>
+                    <p class="hero-subtitle">Özgün eserleri satın al, atölyelere katıl, sanatçılarla buluş. Her an, her yerde.</p>
+                    <div class="hero-cta">
+                        <button class="btn-primary btn-lg" id="hero-explore" data-goto="artworks">Eserleri Keşfet</button>
+                        <button class="btn-outline btn-lg" id="hero-events" data-goto="events">Etkinlikler</button>
+                    </div>
+                    <div class="hero-stats">
+                        <div class="stat">
+                            <span class="stat-num" data-target="248">0</span>
+                            <span class="stat-label">Özgün Eser</span>
+                        </div>
+                        <div class="stat-divider"></div>
+                        <div class="stat">
+                            <span class="stat-num" data-target="84">0</span>
+                            <span class="stat-label">Sanatçı</span>
+                        </div>
+                        <div class="stat-divider"></div>
+                        <div class="stat">
+                            <span class="stat-num" data-target="36">0</span>
+                            <span class="stat-label">Etkinlik</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="hero-visual">
+                    <div class="artwork-showcase">
+                        <div class="showcase-card card-main" id="showcase-main">
+                            <div class="artwork-img-wrap">
+                                <div class="artwork-placeholder artwork-p1"></div>
+                            </div>
+                            <div class="artwork-info">
+                                <span class="artwork-cat">Yağlı Boya</span>
+                                <h3>Boğaz'da Gün Batımı</h3>
+                                <div class="artwork-meta">
+                                    <span class="artist">Zeynep Arslan</span>
+                                    <span class="price">₺18.500</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="showcase-card card-sm card-top" id="showcase-top">
+                            <div class="artwork-placeholder artwork-p2"></div>
+                            <span class="mini-label">Suluboya / ₺4.200</span>
+                        </div>
+                        <div class="showcase-card card-sm card-bottom" id="showcase-bottom">
+                            <div class="artwork-placeholder artwork-p3"></div>
+                            <span class="mini-label">Heykel / ₺31.000</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Featured Artworks -->
+            <section class="section" id="featured-section">
+                <div class="section-header">
+                    <div>
+                        <p class="section-tag">✦ Öne Çıkanlar</p>
+                        <h2 class="section-title">Haftanın Eserleri</h2>
+                    </div>
+                    <button class="btn-ghost" id="view-all-artworks" data-goto="artworks">Tümünü Gör →</button>
+                </div>
+                <div class="artworks-grid" id="home-artworks-grid">
+                    <!-- JS ile doldurulacak -->
+                </div>
+            </section>
+
+            <!-- Upcoming Events -->
+            <section class="section section-dark" id="events-preview-section">
+                <div class="section-header">
+                    <div>
+                        <p class="section-tag">✦ Yaklaşan Etkinlikler</p>
+                        <h2 class="section-title">Atölye & Sergiler</h2>
+                    </div>
+                    <button class="btn-ghost" id="view-all-events" data-goto="events">Tümünü Gör →</button>
+                </div>
+                <div class="events-row" id="home-events-row">
+                    <!-- JS ile doldurulacak -->
+                </div>
+            </section>
+
+            <!-- Artists Spotlight -->
+            <section class="section" id="artists-section">
+                <div class="section-header">
+                    <div>
+                        <p class="section-tag">✦ Sanatçılar</p>
+                        <h2 class="section-title">Öne Çıkan İsimler</h2>
+                    </div>
+                </div>
+                <div class="artists-row" id="artists-row">
+                    <!-- JS ile doldurulacak -->
+                </div>
+            </section>
+
+        </section>
+
+        <!-- ========== ARTWORKS PAGE ========== -->
+        <section class="page" id="page-artworks">
+            <div class="page-header">
+                <div class="page-header-content">
+                    <p class="section-tag">✦ Koleksiyon</p>
+                    <h1 class="page-title">Eserler</h1>
+                    <p class="page-subtitle">248 özgün eseri keşfedin</p>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="filters-bar" id="artworks-filters">
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" placeholder="Eser veya sanatçı ara..." id="artwork-search" class="search-input">
+                </div>
+                <div class="filter-chips" id="category-filters">
+                    <button class="chip active" data-cat="Tümü" id="cat-all">Tümü</button>
+                    <button class="chip" data-cat="Yağlı Boya" id="cat-yagli">Yağlı Boya</button>
+                    <button class="chip" data-cat="Suluboya" id="cat-sulu">Suluboya</button>
+                    <button class="chip" data-cat="Heykel" id="cat-heykel">Heykel</button>
+                    <button class="chip" data-cat="Dijital" id="cat-dijital">Dijital</button>
+                    <button class="chip" data-cat="Fotoğraf" id="cat-foto">Fotoğraf</button>
+                </div>
+                <div class="sort-box">
+                    <select id="artwork-sort" class="sort-select">
+                        <option value="default">Sırala: Önerilen</option>
+                        <option value="price-asc">Fiyat: Düşük → Yüksek</option>
+                        <option value="price-desc">Fiyat: Yüksek → Düşük</option>
+                        <option value="rating">En Yüksek Puan</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="artworks-grid artworks-grid-full" id="artworks-main-grid">
+                <!-- JS ile doldurulacak -->
+            </div>
+        </section>
+
+        <!-- ========== EVENTS PAGE ========== -->
+        <section class="page" id="page-events">
+            <div class="page-header">
+                <div class="page-header-content">
+                    <p class="section-tag">✦ Etkinlikler</p>
+                    <h1 class="page-title">Atölye & Sergiler</h1>
+                    <p class="page-subtitle">Sanatı yaşayın, ustalardan öğrenin</p>
+                </div>
+            </div>
+
+            <div class="filters-bar" id="events-filters">
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" placeholder="Etkinlik ara..." id="event-search" class="search-input">
+                </div>
+                <div class="filter-chips" id="event-type-filters">
+                    <button class="chip active" data-type="Tümü" id="evt-all">Tümü</button>
+                    <button class="chip" data-type="Atölye" id="evt-atolye">Atölye</button>
+                    <button class="chip" data-type="Sergi" id="evt-sergi">Sergi</button>
+                    <button class="chip" data-type="Workshop" id="evt-workshop">Workshop</button>
+                </div>
+            </div>
+
+            <div class="events-grid" id="events-main-grid">
+                <!-- JS ile doldurulacak -->
+            </div>
+        </section>
+
+        <!-- ========== ADMIN DASHBOARD PAGE ========== -->
+        <section class="page" id="page-admin">
+            <div class="page-header page-header-dark">
+                <div class="page-header-content">
+                    <p class="section-tag">✦ Yönetim Paneli</p>
+                    <h1 class="page-title">Admin Dashboard</h1>
+                    <p class="page-subtitle">AdminSummaryDashboard · Canlı İstatistikler</p>
+                </div>
+            </div>
+
+            <!-- KPI Cards -->
+            <div class="kpi-grid" id="kpi-grid">
+                <div class="kpi-card" id="kpi-users">
+                    <div class="kpi-icon">👤</div>
+                    <div class="kpi-body">
+                        <p class="kpi-label">Toplam Müşteri</p>
+                        <p class="kpi-value" data-target="1284">0</p>
+                        <p class="kpi-change positive">+12% bu ay</p>
+                    </div>
+                </div>
+                <div class="kpi-card" id="kpi-sold">
+                    <div class="kpi-icon">🖼️</div>
+                    <div class="kpi-body">
+                        <p class="kpi-label">Satılan Eser</p>
+                        <p class="kpi-value" data-target="187">0</p>
+                        <p class="kpi-change positive">+8% bu ay</p>
+                    </div>
+                </div>
+                <div class="kpi-card" id="kpi-reservations">
+                    <div class="kpi-icon">📅</div>
+                    <div class="kpi-body">
+                        <p class="kpi-label">Aktif Rezervasyon</p>
+                        <p class="kpi-value" data-target="423">0</p>
+                        <p class="kpi-change positive">+24% bu ay</p>
+                    </div>
+                </div>
+                <div class="kpi-card kpi-accent" id="kpi-revenue">
+                    <div class="kpi-icon">💰</div>
+                    <div class="kpi-body">
+                        <p class="kpi-label">Toplam Satış Geliri</p>
+                        <p class="kpi-value kpi-currency" data-target="2847500">0</p>
+                        <p class="kpi-change positive">+18% bu ay</p>
+                    </div>
+                </div>
+                <div class="kpi-card" id="kpi-event-revenue">
+                    <div class="kpi-icon">🎨</div>
+                    <div class="kpi-body">
+                        <p class="kpi-label">Etkinlik Geliri</p>
+                        <p class="kpi-value kpi-currency" data-target="384200">0</p>
+                        <p class="kpi-change positive">+31% bu ay</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tables -->
+            <div class="admin-tables">
+                <!-- Event Stats -->
+                <div class="admin-table-card" id="event-stats-card">
+                    <div class="table-header">
+                        <h3>📊 Etkinlik İstatistikleri</h3>
+                        <span class="table-badge">EventStatisticsView</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table" id="event-stats-table">
+                            <thead>
+                                <tr>
+                                    <th>Etkinlik Adı</th>
+                                    <th>Kontenjan</th>
+                                    <th>Kayıtlı</th>
+                                    <th>Doluluk %</th>
+                                    <th>Ort. Puan</th>
+                                    <th>Rezervasyon</th>
+                                </tr>
+                            </thead>
+                            <tbody id="event-stats-body">
+                                <!-- JS ile doldurulacak -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Artwork Stats -->
+                <div class="admin-table-card" id="artwork-stats-card">
+                    <div class="table-header">
+                        <h3>🖼️ Eser İstatistikleri</h3>
+                        <span class="table-badge">ArtworkStatisticsView</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table" id="artwork-stats-table">
+                            <thead>
+                                <tr>
+                                    <th>Eser Adı</th>
+                                    <th>Sanatçı</th>
+                                    <th>Fiyat</th>
+                                    <th>Durum</th>
+                                    <th>Beğeni</th>
+                                    <th>Yorum</th>
+                                    <th>Puan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="artwork-stats-body">
+                                <!-- JS ile doldurulacak -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Support Tickets -->
+                <div class="admin-table-card" id="tickets-card">
+                    <div class="table-header">
+                        <h3>🎫 Destek Talepleri</h3>
+                        <span class="table-badge">SupportTickets</span>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table" id="tickets-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Kullanıcı</th>
+                                    <th>Konu</th>
+                                    <th>Tarih</th>
+                                    <th>Durum</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tickets-body">
+                                <!-- JS ile doldurulacak -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ARTWORK DETAIL MODAL -->
+    <div class="modal-overlay" id="artwork-modal" role="dialog" aria-modal="true">
+        <div class="modal-box" id="artwork-modal-box">
+            <button class="modal-close" id="artwork-modal-close" aria-label="Kapat">✕</button>
+            <div class="modal-content" id="artwork-modal-content">
+                <!-- JS ile doldurulacak -->
+            </div>
+        </div>
+    </div>
+
+    <!-- EVENT DETAIL MODAL -->
+    <div class="modal-overlay" id="event-modal" role="dialog" aria-modal="true">
+        <div class="modal-box" id="event-modal-box">
+            <button class="modal-close" id="event-modal-close" aria-label="Kapat">✕</button>
+            <div class="modal-content" id="event-modal-content">
+                <!-- JS ile doldurulacak -->
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGIN MODAL -->
+    <div class="modal-overlay" id="login-modal" role="dialog" aria-modal="true">
+        <div class="modal-box modal-sm" id="login-modal-box">
+            <button class="modal-close" id="login-modal-close" aria-label="Kapat">✕</button>
+            <div class="auth-modal">
+                <div class="auth-tabs">
+                    <button class="auth-tab active" id="tab-login" data-tab="login">Giriş Yap</button>
+                    <button class="auth-tab" id="tab-signup" data-tab="signup">Kayıt Ol</button>
+                </div>
+                <div class="auth-form" id="form-login">
+                    <div class="form-group">
+                        <label for="login-email">E-posta</label>
+                        <input type="email" id="login-email" placeholder="ornek@email.com" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Şifre</label>
+                        <input type="password" id="login-password" placeholder="••••••••" class="form-input">
+                    </div>
+                    <button class="btn-primary btn-full" id="submit-login">Giriş Yap</button>
+                </div>
+                <div class="auth-form hidden" id="form-signup">
+                    <div class="form-group">
+                        <label for="signup-name">Ad Soyad</label>
+                        <input type="text" id="signup-name" placeholder="Adınız Soyadınız" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-email">E-posta</label>
+                        <input type="email" id="signup-email" placeholder="ornek@email.com" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-password">Şifre</label>
+                        <input type="password" id="signup-password" placeholder="••••••••" class="form-input">
+                    </div>
+                    <button class="btn-primary btn-full" id="submit-signup">Kayıt Ol</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
