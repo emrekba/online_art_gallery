@@ -1,0 +1,101 @@
+Database Management Systems - Project AssignmentVERİTABANI PROJE ÖDEVİ
+Online Sanat Galerisi ve Atölye Rezervasyon Sistemi
+Bu ödev, yüklenen örnekteki e-ticaret senaryosu temel alınarak farklı bir konuya uyarlanmıştır. 
+Öğrencilerden, aşağıda verilen gereksinimlere uygun bir veritabanı tasarımı geliştirmeleri; tabloları, 
+ilişkileri ve kullanıcı arayüzü mantığını açıklayan bir rapor hazırlamaları beklenmektedir.
+Sistem Gereksinimleri
+1. Eserleri İnceleme
+Sanat eserlerinin detaylarını görüntüleme
+Eser görsellerini görüntüleme
+Eser açıklamalarını ve sanatçı bilgilerini okuma
+2. Atölye ve Etkinlikleri Görüntüleme
+Düzenlenen atölye ve etkinlikleri listeleme
+Etkinlik tarihi, saati, kontenjanı ve ücret bilgilerini görüntüleme
+Etkinlik detay sayfasını inceleme
+3. Favorilere Ekleme
+Beğenilen eserleri favorilere ekleme
+Favori listesini görüntüleme
+Favorilerden eser çıkarma
+4. Rezervasyon Oluşturma
+Atölye veya etkinlik için rezervasyon yapma
+Katılımcı sayısını seçme
+Uygun tarih ve saat seçimi yapma
+5. Rezervasyonu Güncelleme
+Rezervasyon tarihini değiştirme
+Katılımcı sayısını güncelleme
+Rezervasyonu iptal etme
+6. Satın Alma ve Ödeme İşlemleri
+Etkinlik veya eser satın alma
+Ödeme yöntemini seçme
+Siparişi veya rezervasyonu onaylama
+7. Hesap Yönetimi
+Kullanıcı kaydı oluşturma
+Kullanıcı girişi yapma
+Profil bilgilerini güncelleme
+Şifre değiştirme
+8. Sipariş ve Rezervasyon Takibi
+Satın alınan eserlerin durumunu kontrol etme
+Yapılan rezervasyonların durumunu görüntüleme
+Geçmiş sipariş ve rezervasyonları listeleme
+9. İndirim ve Kampanyalar
+Database Management Systems - Project Assignmentİndirim kuponu kullanma
+Kampanyalı etkinlikleri veya eserleri görüntüleme
+Belirli kullanıcılara özel fırsatlar sunma
+10. Müşteri Destek
+İletişim formu üzerinden soru gönderme
+Canlı destek veya mesaj sistemi kullanma
+Destek taleplerinin durumunu görüntüleme
+11. Eser ve Etkinlik Karşılaştırma
+Birden fazla etkinliği tarih, ücret ve kontenjan açısından karşılaştırma
+Birden fazla eseri kategori, fiyat ve sanatçı açısından karşılaştırma
+Karşılaştırma sonuçlarını kaydetme
+12. Yorum Ekleme
+Kullanıcıların eserler hakkında yorum yapabilmesi
+Kullanıcıların katıldıkları etkinlikler hakkında değerlendirme yazabilmesi
+Diğer kullanıcı yorumlarını görüntüleyebilmesi
+13. Yorumları Değerlendirme ve Filtreleme
+Yorumlara puan verme veya faydalı bulma oyu verme
+Yorumları en yeni, en yüksek puanlı veya en faydalı olacak şekilde filtreleme
+Ortalama puan bilgilerini görüntüleme
+14. Yorumlara Yanıt Verme
+Galeri yöneticisinin veya etkinlik sorumlusunun yorumlara yanıt verebilmesi
+Kullanıcıların bu yanıtları görüntüleyebilmesi
+15. Doğrulama ve Güvenilirlik
+Yorumların yalnızca giriş yapmış kullanıcılar tarafından yapılabilmesi
+Etkinlik yorumu yapabilmek için kullanıcının ilgili etkinliğe katılmış olması
+Satın alınan eserler için doğrulanmış değerlendirme sistemi kurulması
+16. İstatistik ve Raporlama
+Eser bazında toplam beğeni, yorum ve görüntülenme sayılarını gösterme
+Etkinlik bazında doluluk oranı, ortalama puan ve toplam rezervasyon sayılarını gösterme
+Yönetici için özet rapor ekranı oluşturma
+Database Management Systems - Project AssignmentDeğerlendirme ve 100 Puanlık Ölçek
+Ham puan yapısı: Arayüzün etkinliği 10 puan; diğer 16 madde ise ayrı ayrı 6 puandır. Bu durumda ham 
+toplam puan 106 olmaktadır.
+Bileşen Ham Puan Açıklama
+Kullanıcı arayüzünün etkinliği 10 Arayüz tasarımının açıklığı, 
+işlevselliği ve genel sunumu
+16 gereksinim maddesinin 
+tamamı96 Her bir madde 6 puan olacak 
+şekilde değerlendirilir
+Ham toplam 106 Öğrencinin doğrudan topladığı 
+puan
+Rapor eksikliği cezası -30 Rapor teslim edilmezse ham 
+puandan düşülür
+100’lük sisteme dönüştürme formülü:
+Final Not = (Ham Puan / 106) × 100
+Uygulama notu: Önce öğrencinin ham puanı hesaplanır. Eğer rapor verilmemişse 30 puanlık kesinti bu 
+ham puan üzerinden uygulanır. Son aşamada elde edilen puan 100’lük sisteme yukarıdaki formülle 
+dönüştürülür.
+Örnek Dönüşüm Tablosu
+Ham Puan 100’lük Karşılık Not
+106 100.00 Tam puan
+95 89.62 Yüksek başarı
+80 75.47 Orta-iyi düzey
+60 56.60 Geliştirilmeli
+Rapor İçeriğinde Beklenenler
+Kapak sayfasında geliştirilen sistemin görseline yer verilmesi
+Veritabanı tasarımının sunulması
+Tabloların ve ilişkilerin açıklanması
+Kullanıcı arayüzü hakkında kısa bilgilendirme yapılması
+Not: Bu belge, 106 puanlık özgün değerlendirme yapısının 100 puanlık sisteme dönüştürülmüş hâlini 
+içermektedir.
