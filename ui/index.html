@@ -358,6 +358,7 @@
                     <button class="profile-tab active" data-ptab="info" style="padding:12px; text-align:left; background:var(--bg3); border-radius:8px; border:none; color:var(--text1); cursor:pointer;">Hesap Bilgileri</button>
                     <button class="profile-tab" data-ptab="orders" style="padding:12px; text-align:left; background:transparent; border-radius:8px; border:1px solid var(--border); color:var(--text2); cursor:pointer;">Satın Aldıklarım</button>
                     <button class="profile-tab" data-ptab="reservations" style="padding:12px; text-align:left; background:transparent; border-radius:8px; border:1px solid var(--border); color:var(--text2); cursor:pointer;">Etkinlik Kayıtlarım</button>
+                    <button class="profile-tab" data-ptab="favorites" style="padding:12px; text-align:left; background:transparent; border-radius:8px; border:1px solid var(--border); color:var(--text2); cursor:pointer;">Favorilerim</button>
                 </div>
                 <div class="profile-content" style="background:var(--bg2); padding:30px; border-radius:16px; border:1px solid var(--border);">
                     <div class="ptab-content active" id="ptab-info">
@@ -385,6 +386,12 @@
                     <div class="ptab-content" id="ptab-reservations" style="display:none;">
                         <h3 style="margin-bottom:20px;">Etkinlik Kayıtlarım</h3>
                         <div id="profile-reservations-list" style="display:flex; flex-direction:column; gap:12px;">
+                            <!-- JS ile doldurulacak -->
+                        </div>
+                    </div>
+                    <div class="ptab-content" id="ptab-favorites" style="display:none;">
+                        <h3 style="margin-bottom:20px;">Favori Eserlerim</h3>
+                        <div id="profile-favorites-grid" class="artworks-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
                             <!-- JS ile doldurulacak -->
                         </div>
                     </div>

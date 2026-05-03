@@ -285,11 +285,34 @@ function openEvent(id) {
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
 // ===== ACTIONS =====
-function toggleFav(e, id) {
+async function toggleFav(e, id) {
   e.stopPropagation();
-  if (state.favorites.has(id)) { state.favorites.delete(id); showToast('Favorilerden çıkarıldı', 'error'); }
-  else { state.favorites.add(id); showToast('Favorilere eklendi ♥', 'success'); }
-  renderArtworks(); renderHome();
+  if (!state.loggedIn) { showToast('Favorilere eklemek için giriş yapmalısınız', 'error'); return; }
+  
+  if (state.favorites.has(id)) { 
+      try {
+          const res = await fetch(`${API_URL}/favorites/${state.user.id}/${id}`, {method: 'DELETE'});
+          if(res.ok) {
+              state.favorites.delete(id); 
+              showToast('Favorilerden çıkarıldı', 'error'); 
+          }
+      } catch(err) { return; }
+  } else { 
+      try {
+          const res = await fetch(`${API_URL}/favorites`, {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({user_id: state.user.id, artwork_id: id})
+          });
+          if(res.ok) {
+              state.favorites.add(id); 
+              showToast('Favorilere eklendi ♥', 'success'); 
+          }
+      } catch(err) { return; }
+  }
+  
+  renderArtworks(); renderHome(); renderFavoritesList();
+  
   // update modal button if open
   const favBtn = document.getElementById('fav-btn-' + id);
   if (favBtn) { const liked = state.favorites.has(id); favBtn.textContent = liked ? '♥ Favorilerde' : '♡ Favoriye Ekle'; }
@@ -366,6 +389,7 @@ async function doLogin() {
           document.getElementById('nav-item-profile').style.display = 'inline-block';
           closeModal('login-modal');
           showToast(`Hoş geldiniz, ${state.user.name}! ✓`, 'success');
+          loadFavorites();
       } else {
           showToast(data.message, 'error');
       }
@@ -396,6 +420,7 @@ async function doSignup() {
           document.getElementById('nav-item-profile').style.display = 'inline-block';
           closeModal('login-modal');
           showToast(`Kayıt başarılı, hoş geldiniz ${data.user.name}! ✓`, 'success');
+          loadFavorites();
       } else {
           showToast(data.message, 'error');
       }
@@ -494,12 +519,34 @@ async function cancelReservation(resId) {
     } catch(err) {}
 }
 
+async function loadFavorites() {
+    if(!state.loggedIn) return;
+    try {
+        const res = await fetch(`${API_URL}/favorites/${state.user.id}`);
+        const data = await res.json();
+        if(data.success) {
+            state.favorites = new Set(data.favorites);
+            renderArtworks(); renderHome();
+            renderFavoritesList();
+        }
+    } catch(e) {}
+}
+
+function renderFavoritesList() {
+    const list = artworks.filter(a => state.favorites.has(a.id));
+    document.getElementById('profile-favorites-grid').innerHTML = list.length 
+        ? list.map(a => artworkCard(a)).join('') 
+        : '<p style="color:var(--text3)">Henüz favori eseriniz bulunmuyor.</p>';
+}
+
 function doLogout() {
     state.loggedIn = false; state.user = null; 
+    state.favorites.clear();
     document.getElementById('btn-login').textContent = 'Giriş Yap'; 
     document.getElementById('btn-register').textContent = 'Kayıt Ol'; 
     document.getElementById('nav-item-profile').style.display = 'none';
     if(state.page === 'profile') navigate('home');
+    renderArtworks(); renderHome();
     showToast('Çıkış yapıldı', 'error');
 }
 

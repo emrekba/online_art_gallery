@@ -197,6 +197,35 @@ def update_reservation(res_id):
     conn.close()
     return jsonify({'success': True, 'message': 'Rezervasyon güncellendi'})
 
+@app.route('/api/favorites/<int:user_id>', methods=['GET'])
+def get_favorites(user_id):
+    conn = get_db_connection()
+    favorites = conn.execute('SELECT ArtworkID FROM Favorites WHERE UserID = ?', (user_id,)).fetchall()
+    conn.close()
+    return jsonify({'success': True, 'favorites': [f['ArtworkID'] for f in favorites]})
+
+@app.route('/api/favorites', methods=['POST'])
+def add_favorite():
+    data = request.json
+    user_id = data.get('user_id')
+    artwork_id = data.get('artwork_id')
+    conn = get_db_connection()
+    try:
+        conn.execute('INSERT INTO Favorites (UserID, ArtworkID) VALUES (?, ?)', (user_id, artwork_id))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        pass # Already favorited
+    conn.close()
+    return jsonify({'success': True})
+
+@app.route('/api/favorites/<int:user_id>/<int:artwork_id>', methods=['DELETE'])
+def remove_favorite(user_id, artwork_id):
+    conn = get_db_connection()
+    conn.execute('DELETE FROM Favorites WHERE UserID = ? AND ArtworkID = ?', (user_id, artwork_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
 if __name__ == '__main__':
     print("Backend sunucusu 5000 portunda çalışıyor...")
     app.run(debug=True, port=5000)

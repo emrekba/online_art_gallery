@@ -68,11 +68,11 @@
 - [x] Etkinlik detay modalı
 - [x] Doluluk çubuğu ve kapasite bilgisi
 
-### Madde 3 — Favorilere Ekleme ⚠️ Eksik
+### Madde 3 — Favorilere Ekleme ✅ Tamamlandı
 - [x] Favoriye ekleme butonu ve toggle
 - [x] Toast bildirimi
-- [ ] **Favori listesi sayfası/görünümü YOK** — kullanıcı favorilerini ayrı bir ekranda göremez
-- [ ] **Favorilerden çıkarma UI'da listeleme olmadığı için yarım** 
+- [x] Profil sekmesinde Favorilerim sayfası
+- [x] Backend /api/favorites bağlantısı (kullanıcı bazlı veritabanı kaydı)
 
 ### Madde 4 — Rezervasyon Oluşturma ✅ Tamamlandı
 - [x] "Rezervasyon Yap" butonu
@@ -209,7 +209,7 @@
 |---|-------|-------|-------------|
 | 1 | Eserleri İnceleme | ✅ Tam (UI) | 6/6 |
 | 2 | Atölye/Etkinlik Görüntüleme | ✅ Tam (UI) | 6/6 |
-| 3 | Favorilere Ekleme | ⏳ Yapılacak | 0/6 |
+| 3 | Favorilere Ekleme | ✅ Tamamlandı | 6/6 |
 | 4 | Rezervasyon Oluşturma | ✅ Tamamlandı | 6/6 |
 | 5 | Rezervasyonu Güncelleme | ✅ Tamamlandı | 6/6 |
 | 6 | Satın Alma ve Ödeme | ✅ Tamamlandı | 6/6 |
