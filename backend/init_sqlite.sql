@@ -26,6 +26,7 @@ CREATE TABLE Artworks (
     Price REAL,
     StockStatus TEXT DEFAULT 'Available',
     ImageURL TEXT,
+    ViewCount INTEGER DEFAULT 0,
     CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

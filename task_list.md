@@ -144,11 +144,11 @@
 - [x] Etkinlik yorumu yapabilmek için kullanıcının ilgili etkinliğe katılmış olması (Backend `/api/comments` POST `Reservations.Status='Active'` kontrolü; UI'da "✓ Doğrulanmış Katılımcı" rozeti)
 - [x] Satın alınan eserler için doğrulanmış değerlendirme sistemi (Backend `/api/comments` POST yalnızca `Orders.Status='Completed'` alıcıyı kabul eder; UI'da "✓ Doğrulanmış Alıcı" rozeti)
 
-### Madde 16 — İstatistik ve Raporlama ✅ Büyük Ölçüde Tamamlandı
+### Madde 16 — İstatistik ve Raporlama ✅ Tamamlandı
 - [x] Etkinlik bazında doluluk oranı, ortalama puan ve toplam rezervasyon sayılarını gösterme
 - [x] Eser bazında toplam beğeni ve yorum sayısını gösterme
 - [x] Yönetici için özet rapor ekranı oluşturma
-- [ ] Eserler için görüntülenme sayısı (view count) eksik
+- [x] Eserler için görüntülenme sayısı (view count) — eser modalı her açıldığında `Artworks.ViewCount` 1 artar; modalde ve admin panelinde gösterilir
 
 ---
 
@@ -231,7 +231,7 @@
 | 13 | Yorumları Değerlendirme | ⏳ Yapılacak | 0/6 |
 | 14 | Yorumlara Yanıt | ⏳ Yapılacak | 0/6 |
 | 15 | Doğrulama ve Güvenilirlik | ✅ Tamamlandı | 6/6 |
-| 16 | İstatistik ve Raporlama | ✅ Büyük Ölçüde | 5/6 |
+| 16 | İstatistik ve Raporlama | ✅ Tamamlandı | 6/6 |
 | — | Arayüz Kalitesi | ✅ İyi | 7/10 |
 | **TOPLAM** | | | **~43/106** |
 

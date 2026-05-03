@@ -23,6 +23,17 @@ def init_db():
         conn.close()
         print("Veritabanı hazır.")
 
+    # Mevcut veritabanlarına eksik kolonları ekleyen basit migration adımı.
+    conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
+    cur.execute("PRAGMA table_info(Artworks)")
+    columns = {row[1] for row in cur.fetchall()}
+    if 'ViewCount' not in columns:
+        print("Migration: Artworks tablosuna ViewCount kolonu ekleniyor...")
+        cur.execute('ALTER TABLE Artworks ADD COLUMN ViewCount INTEGER DEFAULT 0')
+        conn.commit()
+    conn.close()
+
 def get_db_connection():
     conn = sqlite3.connect(DB_FILE)
     conn.row_factory = sqlite3.Row
@@ -34,6 +45,20 @@ def get_artworks():
     artworks = conn.execute('SELECT * FROM Artworks').fetchall()
     conn.close()
     return jsonify([dict(ix) for ix in artworks])
+
+@app.route('/api/artworks/<int:artwork_id>/view', methods=['POST'])
+def increment_artwork_view(artwork_id):
+    """Eser her görüntülendiğinde (modal açıldığında) ViewCount'u 1 artırır."""
+    conn = get_db_connection()
+    row = conn.execute('SELECT ViewCount FROM Artworks WHERE ArtworkID = ?', (artwork_id,)).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'success': False, 'message': 'Eser bulunamadı'}), 404
+    conn.execute('UPDATE Artworks SET ViewCount = COALESCE(ViewCount, 0) + 1 WHERE ArtworkID = ?', (artwork_id,))
+    conn.commit()
+    new_count = conn.execute('SELECT ViewCount FROM Artworks WHERE ArtworkID = ?', (artwork_id,)).fetchone()['ViewCount']
+    conn.close()
+    return jsonify({'success': True, 'view_count': new_count})
 
 @app.route('/api/artists', methods=['GET'])
 def get_artists():

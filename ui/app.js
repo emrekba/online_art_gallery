@@ -21,7 +21,8 @@ async function fetchInitialData() {
     const rawArtworks = await artworksRes.json();
     artworks = rawArtworks.map(a => ({
       id: a.ArtworkID, artistId: a.ArtistID, title: a.Title, category: a.Category,
-      price: a.Price, status: a.StockStatus, rating: 4.8, reviews: 24, likes: 142, gradient: a.ImageURL
+      price: a.Price, status: a.StockStatus, rating: 4.8, reviews: 24, likes: 142,
+      viewCount: a.ViewCount || 0, gradient: a.ImageURL
     }));
     
     const rawEvents = await eventsRes.json();
@@ -103,7 +104,10 @@ function artworkCard(a) {
     </div>
     <div class="card-footer">
       <span class="card-price">₺${a.price.toLocaleString('tr-TR')}</span>
-      <span class="card-rating"><span class="star">★</span> ${a.rating} (${a.reviews})</span>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+        <span class="card-views" style="font-size:.75rem;color:var(--text3)">👁️ ${(a.viewCount || 0).toLocaleString('tr-TR')} görüntülenme</span>
+        <span class="card-rating"><span class="star">★</span> ${a.rating} (${a.reviews})</span>
+      </div>
     </div>
   </div>`;
 }
@@ -173,6 +177,7 @@ async function renderAdmin() {
       <td>${a.title}</td><td>${art ? art.name : '-'}</td>
       <td>₺${a.price.toLocaleString('tr-TR')}</td>
       <td><span class="status-badge available">Satışta</span></td>
+      <td>👁️ ${(a.viewCount || 0).toLocaleString('tr-TR')}</td>
       <td>♥ ${a.likes}</td><td>💬 ${a.reviews}</td>
       <td><span class="star-sm">★</span> ${a.rating}</td>
     </tr>`;
@@ -241,10 +246,11 @@ function openArtwork(id) {
     <span style="font-size:.75rem;color:var(--accent);text-transform:uppercase;letter-spacing:1.5px">${a.category}</span>
     <h2 style="font-family:var(--font-display);font-size:1.8rem;margin:8px 0 4px">${a.title}</h2>
     <p style="color:var(--text2);margin-bottom:20px">Sanatçı: <strong>${artist ? artist.name : '-'}</strong></p>
-    <div style="display:flex;gap:16px;align-items:center;margin-bottom:24px">
+    <div style="display:flex;gap:16px;align-items:center;margin-bottom:24px;flex-wrap:wrap">
       <span style="font-size:1.6rem;font-weight:700;color:var(--gold)">₺${a.price.toLocaleString('tr-TR')}</span>
       <span style="color:var(--text2)">★ ${a.rating} · ${a.reviews} yorum</span>
       <span style="color:var(--text2)">♥ ${a.likes} beğeni</span>
+      <span style="color:var(--text2)">👁️ <span id="artwork-view-count-${id}">${a.viewCount.toLocaleString('tr-TR')}</span> görüntülenme</span>
     </div>
     <div style="display:flex;gap:12px">
       <button class="btn-primary" onclick="buyArtwork(${id})" id="btn-buy-${id}">🛒 Satın Al</button>
@@ -257,6 +263,26 @@ function openArtwork(id) {
     </div>`;
   document.getElementById('artwork-modal').classList.add('open');
   loadArtworkComments(id);
+  incrementArtworkView(id);
+}
+
+async function incrementArtworkView(id) {
+  try {
+    const res = await fetch(`${API_URL}/artworks/${id}/view`, { method: 'POST' });
+    const data = await res.json();
+    if (!data.success) return;
+    const a = artworks.find(x => x.id === id);
+    if (a) a.viewCount = data.view_count;
+    const counter = document.getElementById(`artwork-view-count-${id}`);
+    if (counter) counter.textContent = data.view_count.toLocaleString('tr-TR');
+    // Modal kapatıldığında kartlardaki sayaç güncel görünsün
+    if (state.page === 'home') renderHome();
+    else if (state.page === 'artworks') renderArtworks();
+    else if (state.page === 'admin') renderAdmin();
+    else if (state.page === 'profile') renderFavoritesList();
+  } catch (err) {
+    // Sessiz geç — görüntülenme sayacı kritik bir akış değil.
+  }
 }
 
 async function loadArtworkComments(artworkId) {
