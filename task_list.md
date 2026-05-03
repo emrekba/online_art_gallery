@@ -74,21 +74,25 @@
 - [x] Profil sekmesinde Favorilerim sayfası
 - [x] Backend /api/favorites bağlantısı (kullanıcı bazlı veritabanı kaydı)
 
-### Madde 4 — Rezervasyon Oluşturma ✅ Tamamlandı
+### Madde 4 — Rezervasyon Oluşturma ⚠️ Kısmen
 - [x] "Rezervasyon Yap" butonu
 - [x] Giriş kontrolü (login gerektirir)
 - [x] Katılımcı sayısı seçme formu 
 - [x] Backend API bağlantısı
+- [ ] Uygun tarih ve saat seçimi yapma (Şu an etkinliklerin tek bir sabit tarihi var, UI'da tarih seçici YOK)
 
-### Madde 5 — Rezervasyonu Güncelleme ✅ Tamamlandı
+### Madde 5 — Rezervasyonu Güncelleme ⚠️ Kısmen
 - [x] Profil sayfasında rezervasyon listesi
 - [x] Rezervasyon iptal etme (Backend 'Cancelled' güncellemesi)
 - [x] Kişi sayısı fiyat yansıması
+- [ ] Rezervasyon tarihini değiştirme özelliği YOK
+- [ ] Katılımcı sayısını UI üzerinden güncelleme (sadece iptal var, sayı güncelleme eksik)
 
-### Madde 6 — Satın Alma ve Ödeme ✅ Tamamlandı
-- [x] "Satın Al" butonu ve stok durumu güncellemesi
+### Madde 6 — Satın Alma ve Ödeme ⚠️ Kısmen
+- [x] Eserler için "Satın Al" butonu ve stok durumu güncellemesi
 - [x] Ödeme yöntemi seçimi (kredi kartı, havale) modalı
 - [x] Sipariş onay ekranı ve bildirimler
+- [ ] Etkinlik satın alma/ödeme yapma işlemi YOK (Etkinlikler sadece rezerve ediliyor, ödeme modalına bağlanmamış)
 
 ### Madde 7 — Hesap Yönetimi ✅ Tamamlandı
 - [x] Kullanıcı kaydı (signup formu)
@@ -108,44 +112,41 @@
 - [x] İndirimli tutarın veritabanına ve profildeki siparişlere yansıması
 
 ### Madde 10 — Müşteri Destek ✅ Tamamlandı
-- [x] Admin panelinde SupportTickets tablosu görünümü var (sadece listeleme)
-- [x] **İletişim formu (soru gönderme)** Profil -> Destek Taleplerim altında eklendi
-- [x] Canlı destek yerine talep sistemi kullanıldı
-- [x] Destek talebi durumu kullanıcı tarafından görüntüleme eklendi
-- [x] Admin panelinden taleplere yanıt verme özelliği eklendi
+- [x] Admin panelinde SupportTickets tablosu görünümü var
+- [x] İletişim formu üzerinden soru gönderme
+- [x] Canlı destek/mesaj sistemi (Talep/Ticket sistemi olarak uygulandı)
+- [x] Destek taleplerinin durumunu görüntüleme
+- [x] Admin panelinden taleplere yanıt verme özelliği
 
 ### Madde 11 — Karşılaştırma ❌ Eksik
-- [ ] Etkinlik karşılaştırma özelliği YOK
-- [ ] Eser karşılaştırma özelliği YOK
+- [ ] Birden fazla etkinliği tarih, ücret ve kontenjan açısından karşılaştırma YOK
+- [ ] Birden fazla eseri kategori, fiyat ve sanatçı açısından karşılaştırma YOK
 - [ ] Karşılaştırma sonuçlarını kaydetme YOK
 
 ### Madde 12 — Yorum Ekleme ❌ Eksik
-- [ ] Eserlere yorum yapma formu YOK
-- [ ] Etkinliklere değerlendirme yazma YOK
-- [ ] Diğer kullanıcı yorumlarını görüntüleme YOK
+- [ ] Kullanıcıların eserler hakkında yorum yapabilmesi YOK
+- [ ] Kullanıcıların katıldıkları etkinlikler hakkında değerlendirme yazabilmesi YOK
+- [ ] Diğer kullanıcı yorumlarını görüntüleyebilmesi YOK
 
 ### Madde 13 — Yorumları Değerlendirme ve Filtreleme ❌ Eksik
-- [ ] Yorumlara puan verme YOK
-- [ ] "Faydalı buldum" oy sistemi YOK
-- [ ] Yorumları filtreleme (en yeni, en yüksek puanlı) YOK
-- [ ] Ortalama puan gösterimi YOK (sadece mock data'da var)
+- [ ] Yorumlara puan verme veya faydalı bulma oyu verme YOK
+- [ ] Yorumları en yeni, en yüksek puanlı veya en faydalı olacak şekilde filtreleme YOK
+- [ ] Ortalama puan bilgilerini görüntüleme YOK (sadece mock data'da var)
 
 ### Madde 14 — Yorumlara Yanıt Verme ❌ Eksik
-- [ ] Yönetici/sorumlu yanıt verme özelliği YOK
-- [ ] Yanıtları kullanıcıların görebileceği UI YOK
+- [ ] Galeri yöneticisinin veya etkinlik sorumlusunun yorumlara yanıt verebilmesi YOK
+- [ ] Kullanıcıların bu yanıtları görüntüleyebilmesi YOK
 
 ### Madde 15 — Doğrulama ve Güvenilirlik ⚠️ Kısmen
-- [x] Giriş yapmış kullanıcı kontrolü (login guard) — satın alma ve rezervasyonda
-- [x] **Trigger'lar veritabanı seviyesinde yazıldı** (`init_database.sql`)
-- [ ] UI'da "Doğrulanmış Alıcı" rozeti YOK
-- [ ] Etkinliğe katılım kontrolü UI'da gösterilmiyor
+- [x] Yorumların yalnızca giriş yapmış kullanıcılar tarafından yapılabilmesi (Backend DB Trigger ile sağlandı, UI eksik)
+- [x] Etkinlik yorumu yapabilmek için kullanıcının ilgili etkinliğe katılmış olması (DB Trigger var, UI eksik)
+- [ ] Satın alınan eserler için doğrulanmış değerlendirme sistemi kurulması (UI'da rozet vb. YOK)
 
 ### Madde 16 — İstatistik ve Raporlama ✅ Büyük Ölçüde Tamamlandı
-- [x] Admin Dashboard KPI kartları (müşteri, satış, rezervasyon, gelir)
-- [x] EventStatisticsView tablosu (doluluk, puan, rezervasyon sayısı)
-- [x] ArtworkStatisticsView tablosu (beğeni, yorum, puan)
-- [x] SupportTickets tablosu
-- [ ] Görüntülenme sayısı (view count) eksik
+- [x] Etkinlik bazında doluluk oranı, ortalama puan ve toplam rezervasyon sayılarını gösterme
+- [x] Eser bazında toplam beğeni ve yorum sayısını gösterme
+- [x] Yönetici için özet rapor ekranı oluşturma
+- [ ] Eserler için görüntülenme sayısı (view count) eksik
 
 ---
 
