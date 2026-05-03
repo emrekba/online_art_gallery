@@ -59,6 +59,8 @@ async function fetchInitialData() {
 // ===== STATE =====
 let state = { page:'home', catFilter:'Tümü', evtFilter:'Tümü', artSearch:'', evtSearch:'', favorites:new Set(), loggedIn:false, user:null };
 let currentCheckoutArtwork = null;
+let appliedCoupon = null;
+let specialOffer = null;
 
 // ===== NAVIGATION =====
 function navigate(page) {
@@ -323,10 +325,19 @@ function buyArtwork(id) {
   const a = artworks.find(x => x.id === id);
   if (a) {
       currentCheckoutArtwork = a;
+      appliedCoupon = null; // reset
+      document.getElementById('checkout-coupon').value = '';
+      document.getElementById('coupon-message').innerHTML = '';
+      
+      let priceHtml = `Toplam Tutar: <strong style="color:var(--gold)">₺${a.price.toLocaleString('tr-TR')}</strong>`;
+      if(specialOffer && specialOffer.ArtworkID === id) {
+          priceHtml = `<span style="text-decoration:line-through; opacity:0.6; font-size:0.9rem;">₺${specialOffer.OriginalPrice.toLocaleString('tr-TR')}</span> <strong style="color:#4ade80;">%15 Özel İndirim -> ₺${specialOffer.DiscountedPrice.toLocaleString('tr-TR')}</strong>`;
+      }
+      
       document.getElementById('checkout-summary').innerHTML = `
         <h4>${a.title}</h4>
         <p style="color:var(--text2); margin-top:4px">Kategori: ${a.category}</p>
-        <p style="margin-top:12px; font-size:1.2rem;">Toplam Tutar: <strong style="color:var(--gold)">₺${a.price.toLocaleString('tr-TR')}</strong></p>
+        <p style="margin-top:12px; font-size:1.2rem;">${priceHtml}</p>
       `;
       closeModal('artwork-modal');
       document.getElementById('checkout-modal').classList.add('open');
@@ -390,6 +401,7 @@ async function doLogin() {
           closeModal('login-modal');
           showToast(`Hoş geldiniz, ${state.user.name}! ✓`, 'success');
           loadFavorites();
+          fetchSpecialOffer();
       } else {
           showToast(data.message, 'error');
       }
@@ -421,6 +433,7 @@ async function doSignup() {
           closeModal('login-modal');
           showToast(`Kayıt başarılı, hoş geldiniz ${data.user.name}! ✓`, 'success');
           loadFavorites();
+          fetchSpecialOffer();
       } else {
           showToast(data.message, 'error');
       }
@@ -519,6 +532,26 @@ async function cancelReservation(resId) {
     } catch(err) {}
 }
 
+async function fetchSpecialOffer() {
+    if(!state.loggedIn) return;
+    try {
+        const res = await fetch(`${API_URL}/special-offer/${state.user.id}`);
+        const data = await res.json();
+        if(data.success && data.offer) {
+            specialOffer = data.offer;
+            const banner = document.getElementById('special-offer-banner');
+            banner.innerHTML = `
+                <div>
+                    <strong style="color:#fcd34d;">🔥 Sana Özel Fırsat!</strong> "${specialOffer.Title}" isimli eser kısa süreliğine %15 indirimle!
+                    <br><span style="font-size:0.85rem; opacity:0.8;">Normal Fiyat: ₺${specialOffer.OriginalPrice.toLocaleString('tr-TR')} | İndirimli Fiyat: ₺${specialOffer.DiscountedPrice.toLocaleString('tr-TR')}</span>
+                </div>
+                <button class="btn-primary" onclick="openArtwork(${specialOffer.ArtworkID})" style="background:white; color:var(--accent); white-space:nowrap; border:none; border-radius:8px; font-weight:bold;">İncele</button>
+            `;
+            banner.style.display = 'flex';
+        }
+    } catch(e) {}
+}
+
 async function loadFavorites() {
     if(!state.loggedIn) return;
     try {
@@ -591,6 +624,42 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('checkout-modal-close').addEventListener('click', () => closeModal('checkout-modal'));
   document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); }));
 
+  // Coupon Apply
+  document.getElementById('btn-apply-coupon').addEventListener('click', async () => {
+      if(!currentCheckoutArtwork) return;
+      const code = document.getElementById('checkout-coupon').value.trim();
+      if(!code) return;
+      try {
+          const res = await fetch(`${API_URL}/validate-coupon`, {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({code})
+          });
+          const data = await res.json();
+          if(data.success) {
+              appliedCoupon = data.coupon;
+              let discountStr = '';
+              let newPrice = currentCheckoutArtwork.price;
+              
+              if(specialOffer && specialOffer.ArtworkID === currentCheckoutArtwork.id) {
+                  newPrice = specialOffer.DiscountedPrice;
+              }
+              
+              if(appliedCoupon.DiscountType === 'Percent') {
+                  discountStr = `%${appliedCoupon.DiscountValue} İndirim`;
+                  newPrice = newPrice * (1 - appliedCoupon.DiscountValue/100);
+              } else {
+                  discountStr = `₺${appliedCoupon.DiscountValue} İndirim`;
+                  newPrice = Math.max(0, newPrice - appliedCoupon.DiscountValue);
+              }
+              document.getElementById('coupon-message').innerHTML = `<span style="color:#4ade80;">✓ ${code} Uygulandı: ${discountStr}</span><br><strong>Yeni Toplam: ₺${newPrice.toLocaleString('tr-TR')}</strong>`;
+          } else {
+              document.getElementById('coupon-message').innerHTML = `<span style="color:#ef4444;">✗ ${data.message}</span>`;
+              appliedCoupon = null;
+          }
+      } catch(e) {}
+  });
+
   // Checkout confirm
   document.getElementById('btn-confirm-checkout').addEventListener('click', async () => {
       if(!currentCheckoutArtwork) return;
@@ -598,22 +667,30 @@ document.addEventListener('DOMContentLoaded', () => {
       const btn = document.getElementById('btn-confirm-checkout');
       btn.textContent = 'İşleniyor...'; btn.disabled = true;
       
+      const payload = {
+          user_id: state.user.id,
+          artwork_id: currentCheckoutArtwork.id,
+          payment_method: method
+      };
+      if(appliedCoupon) payload.coupon_code = appliedCoupon.Code;
+      if(specialOffer && specialOffer.ArtworkID === currentCheckoutArtwork.id) payload.is_special_offer = true;
+      
       try {
           const res = await fetch(`${API_URL}/orders`, {
               method: 'POST',
               headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({
-                  user_id: state.user.id,
-                  artwork_id: currentCheckoutArtwork.id,
-                  payment_method: method
-              })
+              body: JSON.stringify(payload)
           });
           const data = await res.json();
           if(data.success) {
               showToast(`"${currentCheckoutArtwork.title}" satın alındı! ✓`, 'success');
               currentCheckoutArtwork.status = 'Sold';
               closeModal('checkout-modal');
-              renderArtworks(); renderHome();
+              if(specialOffer && specialOffer.ArtworkID === currentCheckoutArtwork.id) {
+                  document.getElementById('special-offer-banner').style.display = 'none';
+                  specialOffer = null;
+              }
+              renderArtworks(); renderHome(); loadProfile();
           } else {
               showToast(data.message, 'error');
           }

@@ -131,12 +131,42 @@ def update_profile(user_id):
     conn.close()
     return jsonify({'success': True, 'message': 'Profil güncellendi'})
 
+@app.route('/api/validate-coupon', methods=['POST'])
+def validate_coupon():
+    data = request.json
+    code = data.get('code')
+    
+    conn = get_db_connection()
+    coupon = conn.execute('SELECT * FROM Coupons WHERE Code = ? AND IsActive = 1', (code,)).fetchone()
+    conn.close()
+    
+    if coupon:
+        return jsonify({'success': True, 'coupon': dict(coupon)})
+    else:
+        return jsonify({'success': False, 'message': 'Geçersiz veya süresi dolmuş kupon kodu.'}), 400
+
+@app.route('/api/special-offer/<int:user_id>', methods=['GET'])
+def get_special_offer(user_id):
+    # Kullanıcıya özel rastgele bir indirim (%15)
+    conn = get_db_connection()
+    artwork = conn.execute('SELECT * FROM Artworks WHERE StockStatus = "Available" ORDER BY RANDOM() LIMIT 1').fetchone()
+    conn.close()
+    
+    if artwork:
+        offer = dict(artwork)
+        offer['OriginalPrice'] = offer['Price']
+        offer['DiscountedPrice'] = offer['Price'] * 0.85 # %15 indirim
+        return jsonify({'success': True, 'offer': offer})
+    return jsonify({'success': False}), 404
+
 @app.route('/api/orders', methods=['POST'])
 def create_order():
     data = request.json
     user_id = data.get('user_id')
     artwork_id = data.get('artwork_id')
     payment_method = data.get('payment_method')
+    coupon_code = data.get('coupon_code')
+    is_special_offer = data.get('is_special_offer', False)
     
     conn = get_db_connection()
     artwork = conn.execute('SELECT Price, StockStatus FROM Artworks WHERE ArtworkID = ?', (artwork_id,)).fetchone()
@@ -145,9 +175,23 @@ def create_order():
         conn.close()
         return jsonify({'success': False, 'message': 'Eser müsait değil'}), 400
         
+    final_price = artwork['Price']
+    
+    # Özel teklif %15 indirimi uygula
+    if is_special_offer:
+        final_price = final_price * 0.85
+    # VEYA Kupon kodu indirimi uygula
+    elif coupon_code:
+        coupon = conn.execute('SELECT * FROM Coupons WHERE Code = ? AND IsActive = 1', (coupon_code,)).fetchone()
+        if coupon:
+            if coupon['DiscountType'] == 'Percent':
+                final_price = final_price * (1 - coupon['DiscountValue'] / 100)
+            elif coupon['DiscountType'] == 'Fixed':
+                final_price = max(0, final_price - coupon['DiscountValue'])
+        
     cursor = conn.cursor()
     cursor.execute('INSERT INTO Orders (UserID, TotalAmount, PaymentMethod, Status) VALUES (?, ?, ?, ?)',
-                   (user_id, artwork['Price'], payment_method, 'Completed'))
+                   (user_id, final_price, payment_method, 'Completed'))
     order_id = cursor.lastrowid
     
     cursor.execute('INSERT INTO OrderDetails (OrderID, ArtworkID, Price) VALUES (?, ?, ?)',

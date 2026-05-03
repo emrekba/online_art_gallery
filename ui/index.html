@@ -36,11 +36,16 @@
         </div>
     </nav>
 
-    <!-- PAGES -->
+    <!-- MAIN CONTENT -->
     <main id="main-content">
 
         <!-- ========== HOME PAGE ========== -->
         <section class="page active" id="page-home">
+            <!-- Özel Teklif Banner'ı -->
+            <div id="special-offer-banner" style="display: none; max-width: 1280px; margin: 100px auto 0 auto; background: linear-gradient(135deg, #1a0533, #a855f7); padding: 16px 24px; border-radius: 12px; color: white; justify-content: space-between; align-items: center; border: 1px solid rgba(168, 85, 247, 0.4); position: relative; z-index: 50;">
+                <!-- İçerik JS ile doldurulacak -->
+            </div>
+
 
             <!-- Hero -->
             <div class="hero">
@@ -469,6 +474,11 @@
                 <div id="checkout-summary" style="background:var(--bg3);padding:16px;border-radius:8px;margin-bottom:16px; border:1px solid var(--border)">
                     <!-- summary -->
                 </div>
+                <div style="display:flex; gap:8px; margin-bottom:12px;">
+                    <input type="text" id="checkout-coupon" class="form-input" placeholder="İndirim Kodu (Örn: KTU10)" style="flex:1;">
+                    <button class="btn-outline" id="btn-apply-coupon" style="padding:0 16px;">Uygula</button>
+                </div>
+                <div id="coupon-message" style="margin-bottom:16px; font-size:0.85rem;"></div>
                 <div class="form-group">
                     <label>Ödeme Yöntemi</label>
                     <select id="checkout-method" class="form-input">

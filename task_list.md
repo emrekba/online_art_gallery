@@ -101,10 +101,11 @@
 - [x] Yapılan etkinlik rezervasyonlarının durumu ve listesi
 - [x] Geçmiş sipariş detayları (Tutar, Tarih, Ödeme Yöntemi)
 
-### Madde 9 — İndirim ve Kampanyalar ❌ Eksik
-- [ ] Kupon kodu girişi YOK
-- [ ] Kampanyalı eser/etkinlik gösterimi YOK
-- [ ] Kullanıcıya özel fırsatlar YOK
+### Madde 9 — İndirim ve Kampanyalar ✅ Tamamlandı
+- [x] Kupon kodu girişi ve geçerlilik kontrolü (API)
+- [x] Kampanyalı eser gösterimi (Rastgele Özel Fırsat Banner'ı)
+- [x] Kullanıcıya özel %15 indirim fırsatı
+- [x] İndirimli tutarın veritabanına ve profildeki siparişlere yansıması
 
 ### Madde 10 — Müşteri Destek ⚠️ Yarım
 - [x] Admin panelinde SupportTickets tablosu görünümü var (sadece listeleme)
@@ -215,7 +216,7 @@
 | 6 | Satın Alma ve Ödeme | ✅ Tamamlandı | 6/6 |
 | 7 | Hesap Yönetimi | ✅ Tamamlandı | 6/6 |
 | 8 | Sipariş ve Rezervasyon Takibi | ✅ Tamamlandı | 6/6 |
-| 9 | İndirim ve Kampanyalar | ⏳ Yapılacak | 0/6 |
+| 9 | İndirim ve Kampanyalar | ✅ Tamamlandı | 6/6 |
 | 10 | Müşteri Destek | ⏳ Yapılacak | 0/6 |
 | 11 | Karşılaştırma | ⏳ Yapılacak | 0/6 |
 | 12 | Yorum Ekleme | ⏳ Yapılacak | 0/6 |
