@@ -1,31 +1,7 @@
 // ===== DATA =====
-const artists = [
-  { id:1, name:'Zeynep Arslan', bio:'Yağlı boya', color:'linear-gradient(135deg,#1a0533,#a855f7)' },
-  { id:2, name:'Murat Demir', bio:'Suluboya', color:'linear-gradient(135deg,#0c4a6e,#22d3ee)' },
-  { id:3, name:'Ayşe Kaya', bio:'Heykel', color:'linear-gradient(135deg,#78350f,#f59e0b)' },
-  { id:4, name:'Can Yıldız', bio:'Dijital', color:'linear-gradient(135deg,#064e3b,#10b981)' },
-  { id:5, name:'Elif Şahin', bio:'Fotoğraf', color:'linear-gradient(135deg,#1e1b4b,#6366f1)' },
-];
-
-const artworks = [
-  { id:1, artistId:1, title:"Boğaz'da Gün Batımı", category:'Yağlı Boya', price:18500, status:'Available', rating:4.8, reviews:24, likes:142, gradient:'linear-gradient(135deg,#1a0533,#4a1a8a,#c2410c,#fbbf24)' },
-  { id:2, artistId:2, title:'Mavi Rüya', category:'Suluboya', price:4200, status:'Available', rating:4.5, reviews:18, likes:89, gradient:'linear-gradient(135deg,#0c4a6e,#22d3ee,#a7f3d0)' },
-  { id:3, artistId:3, title:'Toprak Ana', category:'Heykel', price:31000, status:'Sold', rating:4.9, reviews:31, likes:203, gradient:'linear-gradient(135deg,#78350f,#d97706,#fef3c7)' },
-  { id:4, artistId:4, title:'Dijital Kaos', category:'Dijital', price:2800, status:'Available', rating:4.3, reviews:12, likes:67, gradient:'linear-gradient(135deg,#064e3b,#10b981,#d1fae5)' },
-  { id:5, artistId:5, title:'İstanbul Sisli', category:'Fotoğraf', price:6500, status:'Available', rating:4.7, reviews:22, likes:118, gradient:'linear-gradient(135deg,#1e1b4b,#6366f1,#e0e7ff)' },
-  { id:6, artistId:1, title:'Kızıl Orman', category:'Yağlı Boya', price:22000, status:'Available', rating:4.6, reviews:19, likes:97, gradient:'linear-gradient(135deg,#450a0a,#dc2626,#fca5a5)' },
-  { id:7, artistId:2, title:'Yağmur Sonrası', category:'Suluboya', price:3800, status:'Available', rating:4.4, reviews:15, likes:74, gradient:'linear-gradient(135deg,#1e3a5f,#3b82f6,#bfdbfe)' },
-  { id:8, artistId:3, title:'Sonsuzluk', category:'Heykel', price:45000, status:'Sold', rating:5.0, reviews:41, likes:312, gradient:'linear-gradient(135deg,#2d1b69,#8b5cf6,#ede9fe)' },
-];
-
-const events = [
-  { id:1, title:'Yağlı Boya Atölyesi', description:'Başlangıç seviyesi yağlı boya teknikleri. Malzemeler dahildir.', date:'2026-05-15', day:'15', month:'MAY', capacity:20, registered:17, price:450, type:'Atölye', gradient:'linear-gradient(135deg,#1a0533,#a855f7)', rating:4.8, reservations:17 },
-  { id:2, title:'Modern Sanat Sergisi', description:'Çağdaş Türk sanatçıların en güncel eserlerinin buluşma noktası.', date:'2026-05-20', day:'20', month:'MAY', capacity:200, registered:143, price:120, type:'Sergi', gradient:'linear-gradient(135deg,#0c4a6e,#22d3ee)', rating:4.6, reservations:143 },
-  { id:3, title:'Suluboya Workshop', description:'Profesyonel suluboya teknikleriyle renk ve doku çalışmaları.', date:'2026-06-02', day:'02', month:'HAZ', capacity:15, registered:15, price:380, type:'Workshop', gradient:'linear-gradient(135deg,#064e3b,#10b981)', rating:4.9, reservations:15 },
-  { id:4, title:'Heykel Temel Kurs', description:'Kil ile heykel yapımının temelleri. 3 haftalık yoğun program.', date:'2026-06-10', day:'10', month:'HAZ', capacity:12, registered:8, price:1200, type:'Atölye', gradient:'linear-gradient(135deg,#78350f,#f59e0b)', rating:4.7, reservations:8 },
-  { id:5, title:'Fotoğraf & Sanat', description:'Sanat eserlerini fotoğrafla belgeleme ve dijital arşivleme teknikleri.', date:'2026-06-18', day:'18', month:'HAZ', capacity:25, registered:11, price:280, type:'Workshop', gradient:'linear-gradient(135deg,#1e1b4b,#6366f1)', rating:4.5, reservations:11 },
-  { id:6, title:'Dijital İllüstrasyon', description:'Tablet ile dijital sanat üretimi. Procreate ve Adobe Fresco eğitimi.', date:'2026-07-05', day:'05', month:'TEM', capacity:18, registered:6, price:650, type:'Atölye', gradient:'linear-gradient(135deg,#450a0a,#dc2626)', rating:4.4, reservations:6 },
-];
+let artists = [];
+let artworks = [];
+let events = [];
 
 const tickets = [
   { id:1, user:'Mehmet Yılmaz', subject:'Ödeme sorunu', date:'02.05.2026', status:'Open' },
@@ -34,6 +10,51 @@ const tickets = [
   { id:4, user:'Selin Aydın', subject:'Kargo takibi', date:'29.04.2026', status:'Closed' },
   { id:5, user:'Hasan Çelik', subject:'İndirim kodu', date:'28.04.2026', status:'Open' },
 ];
+
+const API_URL = 'http://127.0.0.1:5000/api';
+
+async function fetchInitialData() {
+  try {
+    const [artistsRes, artworksRes, eventsRes] = await Promise.all([
+      fetch(`${API_URL}/artists`),
+      fetch(`${API_URL}/artworks`),
+      fetch(`${API_URL}/events`)
+    ]);
+    
+    const rawArtists = await artistsRes.json();
+    artists = rawArtists.map(a => ({
+        id: a.ArtistID, name: a.Name, bio: a.Biography, color: a.ProfileImage
+    }));
+    
+    const rawArtworks = await artworksRes.json();
+    artworks = rawArtworks.map(a => ({
+      id: a.ArtworkID, artistId: a.ArtistID, title: a.Title, category: a.Category,
+      price: a.Price, status: a.StockStatus, rating: 4.8, reviews: 24, likes: 142, gradient: a.ImageURL
+    }));
+    
+    const rawEvents = await eventsRes.json();
+    events = rawEvents.map(e => {
+      const d = new Date(e.EventDate);
+      const months = ['OCA','ŞUB','MAR','NİS','MAY','HAZ','TEM','AĞU','EYL','EKİ','KAS','ARA'];
+      // Basit bir eşleştirme (Type sütunu DB'de yoksa başlığa göre ayarla)
+      const type = e.Title.includes('Sergi') ? 'Sergi' : (e.Title.includes('Workshop') ? 'Workshop' : 'Atölye');
+      const colors = ['linear-gradient(135deg,#1a0533,#a855f7)', 'linear-gradient(135deg,#0c4a6e,#22d3ee)', 'linear-gradient(135deg,#78350f,#f59e0b)'];
+      return {
+        id: e.EventID, title: e.Title, description: e.Description, date: e.EventDate,
+        day: d.getDate().toString().padStart(2, '0'), month: months[d.getMonth()],
+        capacity: e.Capacity, registered: Math.floor(e.Capacity * 0.7), price: e.Price,
+        type: type, gradient: colors[e.EventID % 3], rating: 4.7, reservations: Math.floor(e.Capacity * 0.7)
+      };
+    });
+    
+    renderHome();
+    renderAdmin();
+  } catch(err) {
+    console.error("Backend bağlantı hatası:", err);
+    showToast("Sunucuya bağlanılamadı! Lütfen backend'i çalıştırın.", "error");
+  }
+}
+
 
 // ===== STATE =====
 let state = { page:'home', catFilter:'Tümü', evtFilter:'Tümü', artSearch:'', evtSearch:'', favorites:new Set(), loggedIn:false, user:null };
@@ -283,29 +304,61 @@ function reserveEvent(id) {
 // ===== AUTH =====
 function openLoginModal() { document.getElementById('login-modal').classList.add('open'); }
 
-function doLogin() {
+async function doLogin() {
   const email = document.getElementById('login-email').value;
   const pass = document.getElementById('login-password').value;
   if (!email || !pass) { showToast('Lütfen tüm alanları doldurun', 'error'); return; }
-  state.loggedIn = true;
-  state.user = { email, name: email.split('@')[0] };
-  document.getElementById('btn-login').textContent = state.user.name;
-  document.getElementById('btn-register').textContent = 'Çıkış';
-  closeModal('login-modal');
-  showToast(`Hoş geldiniz, ${state.user.name}! ✓`, 'success');
+  
+  try {
+      const res = await fetch(`${API_URL}/login`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({email, password: pass})
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+          state.loggedIn = true;
+          state.user = data.user;
+          document.getElementById('btn-login').textContent = state.user.name;
+          document.getElementById('btn-register').textContent = 'Çıkış';
+          closeModal('login-modal');
+          showToast(`Hoş geldiniz, ${state.user.name}! ✓`, 'success');
+      } else {
+          showToast(data.message, 'error');
+      }
+  } catch(err) {
+      showToast('Giriş başarısız, sunucuya ulaşılamıyor.', 'error');
+  }
 }
 
-function doSignup() {
+async function doSignup() {
   const name = document.getElementById('signup-name').value;
   const email = document.getElementById('signup-email').value;
   const pass = document.getElementById('signup-password').value;
   if (!name || !email || !pass) { showToast('Lütfen tüm alanları doldurun', 'error'); return; }
-  state.loggedIn = true;
-  state.user = { email, name };
-  document.getElementById('btn-login').textContent = name;
-  document.getElementById('btn-register').textContent = 'Çıkış';
-  closeModal('login-modal');
-  showToast(`Kayıt başarılı, hoş geldiniz ${name}! ✓`, 'success');
+  
+  try {
+      const res = await fetch(`${API_URL}/register`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({name, email, password: pass})
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+          state.loggedIn = true;
+          state.user = data.user;
+          document.getElementById('btn-login').textContent = data.user.name;
+          document.getElementById('btn-register').textContent = 'Çıkış';
+          closeModal('login-modal');
+          showToast(`Kayıt başarılı, hoş geldiniz ${data.user.name}! ✓`, 'success');
+      } else {
+          showToast(data.message, 'error');
+      }
+  } catch(err) {
+      showToast('Kayıt başarısız, sunucuya ulaşılamıyor.', 'error');
+  }
 }
 
 // ===== TOAST =====
@@ -318,8 +371,8 @@ function showToast(msg, type = 'success') {
 
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', () => {
-  renderHome();
-  renderAdmin();
+  // Fetch data before rendering
+  fetchInitialData();
 
   // Navbar scroll
   window.addEventListener('scroll', () => {
