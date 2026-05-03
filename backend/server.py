@@ -1,10 +1,14 @@
 import sqlite3
 import os
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='../ui', static_url_path='')
 CORS(app) # Tüm domainlerden gelen isteklere izin ver
+
+@app.route('/')
+def serve_index():
+    return send_from_directory(app.static_folder, 'index.html')
 
 DB_FILE = 'gallery.db'
 
@@ -41,9 +45,29 @@ def get_artists():
 @app.route('/api/events', methods=['GET'])
 def get_events():
     conn = get_db_connection()
-    events = conn.execute('SELECT * FROM Events').fetchall()
+    events = conn.execute('''
+        SELECT e.*, 
+               COALESCE((SELECT SUM(ParticipantCount) FROM Reservations r WHERE r.EventID = e.EventID AND r.Status = 'Active'), 0) as RegisteredCount
+        FROM Events e
+    ''').fetchall()
     conn.close()
     return jsonify([dict(ix) for ix in events])
+
+@app.route('/api/events/<int:event_id>/availability', methods=['GET'])
+def get_event_availability(event_id):
+    conn = get_db_connection()
+    event = conn.execute('SELECT Capacity FROM Events WHERE EventID = ?', (event_id,)).fetchone()
+    reservations = conn.execute('''
+        SELECT ReservationDate, SUM(ParticipantCount) as TotalRegistered
+        FROM Reservations
+        WHERE EventID = ? AND Status = 'Active' AND ReservationDate IS NOT NULL
+        GROUP BY ReservationDate
+    ''', (event_id,)).fetchall()
+    conn.close()
+    booked = {}
+    for r in reservations:
+        booked[r['ReservationDate']] = r['TotalRegistered']
+    return jsonify({'success': True, 'capacity': event['Capacity'], 'booked': booked})
 
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -100,7 +124,7 @@ def get_profile(user_id):
     ''', (user_id,)).fetchall()
     
     reservations = conn.execute('''
-        SELECT r.ReservationID, r.ParticipantCount, r.TotalPrice, r.Status, r.CreatedAt,
+        SELECT r.ReservationID, r.EventID, r.ParticipantCount, r.TotalPrice, r.Status, r.CreatedAt, r.ReservationDate,
                e.Title as EventTitle, e.EventDate, e.Price as EventPrice
         FROM Reservations r
         JOIN Events e ON r.EventID = e.EventID
@@ -169,11 +193,11 @@ def create_order():
     is_special_offer = data.get('is_special_offer', False)
     
     conn = get_db_connection()
-    artwork = conn.execute('SELECT Price, StockStatus FROM Artworks WHERE ArtworkID = ?', (artwork_id,)).fetchone()
+    artwork = conn.execute('SELECT Price FROM Artworks WHERE ArtworkID = ?', (artwork_id,)).fetchone()
     
-    if not artwork or artwork['StockStatus'] != 'Available':
+    if not artwork:
         conn.close()
-        return jsonify({'success': False, 'message': 'Eser müsait değil'}), 400
+        return jsonify({'success': False, 'message': 'Eser bulunamadı'}), 404
         
     final_price = artwork['Price']
     
@@ -197,7 +221,6 @@ def create_order():
     cursor.execute('INSERT INTO OrderDetails (OrderID, ArtworkID, Price) VALUES (?, ?, ?)',
                    (order_id, artwork_id, artwork['Price']))
                    
-    cursor.execute('UPDATE Artworks SET StockStatus = ? WHERE ArtworkID = ?', ('Sold', artwork_id))
     conn.commit()
     conn.close()
     
@@ -208,34 +231,79 @@ def create_reservation():
     data = request.json
     user_id = data.get('user_id')
     event_id = data.get('event_id')
+    reservation_date = data.get('reservation_date')
     participant_count = data.get('participant_count', 1)
     
     conn = get_db_connection()
     event = conn.execute('SELECT Price, Capacity FROM Events WHERE EventID = ?', (event_id,)).fetchone()
     
+    # Seçilen tarih+saat için mevcut kayıt sayısını kontrol et
+    if reservation_date:
+        existing = conn.execute('''
+            SELECT COALESCE(SUM(ParticipantCount), 0) as total
+            FROM Reservations
+            WHERE EventID = ? AND ReservationDate = ? AND Status = 'Active'
+        ''', (event_id, reservation_date)).fetchone()
+        if existing['total'] + participant_count > event['Capacity']:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Seçilen saat için yeterli kontenjan yok!'}), 400
+    
+    payment_method = data.get('payment_method', 'Kredi Kartı')
     total_price = event['Price'] * participant_count
     
-    cursor = conn.cursor()
-    cursor.execute('INSERT INTO Reservations (UserID, EventID, ParticipantCount, TotalPrice, Status) VALUES (?, ?, ?, ?, ?)',
-                   (user_id, event_id, participant_count, total_price, 'Active'))
+    conn.execute('INSERT INTO Reservations (UserID, EventID, ParticipantCount, TotalPrice, ReservationDate, PaymentMethod) VALUES (?, ?, ?, ?, ?, ?)',
+                 (user_id, event_id, participant_count, total_price, reservation_date, payment_method))
     conn.commit()
     conn.close()
     
     return jsonify({'success': True, 'message': 'Rezervasyon başarıyla oluşturuldu'})
 
-@app.route('/api/reservations/<int:res_id>', methods=['PUT'])
+@app.route('/api/reservations/<int:res_id>', methods=['PUT', 'DELETE'])
 def update_reservation(res_id):
+    conn = get_db_connection()
+    if request.method == 'DELETE':
+        conn.execute('DELETE FROM Reservations WHERE ReservationID = ?', (res_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Rezervasyon silindi'})
+
     data = request.json
     action = data.get('action')
     
-    conn = get_db_connection()
     if action == 'cancel':
         conn.execute('UPDATE Reservations SET Status = ? WHERE ReservationID = ?', ('Cancelled', res_id))
     elif action == 'update':
         count = int(data.get('participant_count'))
-        res = conn.execute('SELECT e.Price FROM Reservations r JOIN Events e ON r.EventID = e.EventID WHERE r.ReservationID = ?', (res_id,)).fetchone()
+        new_date = data.get('reservation_date')
+        
+        # Get current reservation details
+        res = conn.execute('''
+            SELECT r.EventID, r.ParticipantCount, r.ReservationDate, e.Price, e.Capacity 
+            FROM Reservations r 
+            JOIN Events e ON r.EventID = e.EventID 
+            WHERE r.ReservationID = ?
+        ''', (res_id,)).fetchone()
+        
+        if not res:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Rezervasyon bulunamadı.'}), 404
+            
+        event_id = res['EventID']
+        
+        # Check capacity excluding the current reservation
+        existing = conn.execute('''
+            SELECT COALESCE(SUM(ParticipantCount), 0) as total
+            FROM Reservations
+            WHERE EventID = ? AND ReservationDate = ? AND Status = 'Active' AND ReservationID != ?
+        ''', (event_id, new_date, res_id)).fetchone()
+        
+        if existing['total'] + count > res['Capacity']:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Seçilen saat için yeterli kontenjan yok!'}), 400
+
         new_price = res['Price'] * count
-        conn.execute('UPDATE Reservations SET ParticipantCount = ?, TotalPrice = ? WHERE ReservationID = ?', (count, new_price, res_id))
+        conn.execute('UPDATE Reservations SET ParticipantCount = ?, TotalPrice = ?, ReservationDate = ? WHERE ReservationID = ?', 
+                     (count, new_price, new_date, res_id))
         
     conn.commit()
     conn.close()
@@ -316,6 +384,194 @@ def respond_ticket(ticket_id):
     conn.close()
     return jsonify({'success': True, 'message': 'Talep başarıyla yanıtlandı.'})
 
+
+# ===== COMMENTS / REVIEWS (Madde 12, 15) =====
+
+def _user_purchased_artwork(conn, user_id, artwork_id):
+    """Kullanıcı bu eseri satın almış mı? (Tamamlanmış sipariş şartı)"""
+    row = conn.execute('''
+        SELECT 1
+        FROM Orders o
+        JOIN OrderDetails od ON od.OrderID = o.OrderID
+        WHERE o.UserID = ? AND od.ArtworkID = ? AND o.Status = 'Completed'
+        LIMIT 1
+    ''', (user_id, artwork_id)).fetchone()
+    return row is not None
+
+
+def _user_attended_event(conn, user_id, event_id):
+    """Kullanıcı bu etkinliğe rezervasyon yapmış mı? (Aktif rezervasyon şartı)"""
+    row = conn.execute('''
+        SELECT 1 FROM Reservations
+        WHERE UserID = ? AND EventID = ? AND Status = 'Active'
+        LIMIT 1
+    ''', (user_id, event_id)).fetchone()
+    return row is not None
+
+
+@app.route('/api/comments/event/<int:event_id>', methods=['GET'])
+def get_event_comments(event_id):
+    """Belirtilen etkinliğe ait tüm yorumları döner.
+
+    `Verified` bayrağı, yorum sahibinin o etkinliğe Aktif rezervasyon yapmış
+    bir katılımcı olup olmadığını gösterir.
+    """
+    conn = get_db_connection()
+    rows = conn.execute('''
+        SELECT c.CommentID, c.UserID, c.Content, c.Rating, c.CreatedAt,
+               u.FullName AS UserName,
+               (SELECT 1 FROM Reservations r
+                 WHERE r.UserID = c.UserID AND r.EventID = c.EntityID
+                   AND r.Status = 'Active' LIMIT 1) AS Verified
+        FROM Comments c
+        JOIN Users u ON u.UserID = c.UserID
+        WHERE c.EntityType = 'Event' AND c.EntityID = ?
+        ORDER BY c.CreatedAt DESC
+    ''', (event_id,)).fetchall()
+
+    stats = conn.execute('''
+        SELECT COUNT(*) AS cnt,
+               COALESCE(AVG(Rating), 0) AS avg_rating
+        FROM Comments
+        WHERE EntityType = 'Event' AND EntityID = ? AND Rating IS NOT NULL
+    ''', (event_id,)).fetchone()
+    conn.close()
+
+    return jsonify({
+        'success': True,
+        'count': stats['cnt'] or 0,
+        'average': round(stats['avg_rating'] or 0, 1),
+        'comments': [dict(r) for r in rows]
+    })
+
+
+@app.route('/api/comments/artwork/<int:artwork_id>', methods=['GET'])
+def get_artwork_comments(artwork_id):
+    """Belirtilen esere ait tüm yorumları döner (kullanıcı adlarıyla birlikte).
+
+    Ayrıca ortalama puanı, yorum sayısını ve yorum sahibinin doğrulanmış
+    (satın almış) bir alıcı olup olmadığını da içerir.
+    """
+    conn = get_db_connection()
+    rows = conn.execute('''
+        SELECT c.CommentID, c.UserID, c.Content, c.Rating, c.CreatedAt,
+               u.FullName AS UserName,
+               (SELECT 1 FROM Orders o
+                  JOIN OrderDetails od ON od.OrderID = o.OrderID
+                 WHERE o.UserID = c.UserID AND od.ArtworkID = c.EntityID
+                   AND o.Status = 'Completed' LIMIT 1) AS Verified
+        FROM Comments c
+        JOIN Users u ON u.UserID = c.UserID
+        WHERE c.EntityType = 'Artwork' AND c.EntityID = ?
+        ORDER BY c.CreatedAt DESC
+    ''', (artwork_id,)).fetchall()
+
+    stats = conn.execute('''
+        SELECT COUNT(*) AS cnt,
+               COALESCE(AVG(Rating), 0) AS avg_rating
+        FROM Comments
+        WHERE EntityType = 'Artwork' AND EntityID = ? AND Rating IS NOT NULL
+    ''', (artwork_id,)).fetchone()
+    conn.close()
+
+    return jsonify({
+        'success': True,
+        'count': stats['cnt'] or 0,
+        'average': round(stats['avg_rating'] or 0, 1),
+        'comments': [dict(r) for r in rows]
+    })
+
+
+@app.route('/api/comments', methods=['POST'])
+def create_comment():
+    """Yeni yorum oluştur. Eserler için yalnızca satın alan kullanıcılar yorum yazabilir.
+
+    Beklenen body: { user_id, entity_type ('Artwork'|'Event'), entity_id, content, rating }
+    """
+    data = request.json or {}
+    user_id = data.get('user_id')
+    entity_type = data.get('entity_type', 'Artwork')
+    entity_id = data.get('entity_id')
+    content = (data.get('content') or '').strip()
+    rating = data.get('rating')
+
+    if not user_id or not entity_id or not content:
+        return jsonify({'success': False, 'message': 'Eksik alanlar var.'}), 400
+
+    if rating is not None:
+        try:
+            rating = int(rating)
+            if rating < 1 or rating > 5:
+                return jsonify({'success': False, 'message': 'Puan 1-5 arasında olmalı.'}), 400
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'message': 'Geçersiz puan değeri.'}), 400
+
+    conn = get_db_connection()
+
+    # Doğrulama (Madde 15)
+    if entity_type == 'Artwork':
+        if not _user_purchased_artwork(conn, user_id, entity_id):
+            conn.close()
+            return jsonify({
+                'success': False,
+                'message': 'Sadece bu eseri satın almış kullanıcılar yorum yazabilir.'
+            }), 403
+    elif entity_type == 'Event':
+        if not _user_attended_event(conn, user_id, entity_id):
+            conn.close()
+            return jsonify({
+                'success': False,
+                'message': 'Sadece bu etkinliğe katılan kullanıcılar yorum yazabilir.'
+            }), 403
+    else:
+        conn.close()
+        return jsonify({'success': False, 'message': 'Geçersiz yorum türü.'}), 400
+
+    conn.execute('''
+        INSERT INTO Comments (UserID, EntityType, EntityID, Content, Rating)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (user_id, entity_type, entity_id, content, rating))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': 'Yorumunuz eklendi.'})
+
+
+@app.route('/api/user/<int:user_id>/attended-events', methods=['GET'])
+def get_user_attended_events(user_id):
+    """Kullanıcının yorum yapabileceği etkinliklerin listesi (Aktif rezervasyon)."""
+    conn = get_db_connection()
+    rows = conn.execute('''
+        SELECT DISTINCT e.EventID, e.Title, e.EventDate, e.Price
+        FROM Reservations r
+        JOIN Events e ON e.EventID = r.EventID
+        WHERE r.UserID = ? AND r.Status = 'Active'
+        ORDER BY e.EventDate DESC
+    ''', (user_id,)).fetchall()
+    conn.close()
+    return jsonify({'success': True, 'events': [dict(r) for r in rows]})
+
+
+@app.route('/api/user/<int:user_id>/purchased-artworks', methods=['GET'])
+def get_user_purchased_artworks(user_id):
+    """Kullanıcının satın aldığı (yorum yapabileceği) eserlerin listesi.
+
+    Aynı esere birden fazla yorum yazabilirler, ancak bu uç nokta yalnızca
+    satın alma yapılmış benzersiz eserleri döner.
+    """
+    conn = get_db_connection()
+    rows = conn.execute('''
+        SELECT DISTINCT a.ArtworkID, a.Title, a.Category, a.ImageURL, a.Price
+        FROM Orders o
+        JOIN OrderDetails od ON od.OrderID = o.OrderID
+        JOIN Artworks a ON a.ArtworkID = od.ArtworkID
+        WHERE o.UserID = ? AND o.Status = 'Completed'
+        ORDER BY a.Title
+    ''', (user_id,)).fetchall()
+    conn.close()
+    return jsonify({'success': True, 'artworks': [dict(r) for r in rows]})
+
+
 if __name__ == '__main__':
+    init_db()
     print("Backend sunucusu 5000 portunda çalışıyor...")
     app.run(debug=True, port=5000)

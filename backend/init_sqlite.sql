@@ -101,7 +101,18 @@ CREATE TABLE SupportTickets (
     CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE Coupons (
+    CouponID INTEGER PRIMARY KEY AUTOINCREMENT,
+    Code TEXT UNIQUE NOT NULL,
+    DiscountType TEXT NOT NULL,
+    DiscountValue REAL NOT NULL,
+    IsActive INTEGER DEFAULT 1
+);
+
 -- Seed Data (Örnek Veriler)
+INSERT INTO Coupons (Code, DiscountType, DiscountValue) VALUES 
+('KTU10', 'Percent', 10),
+('ART50', 'Fixed', 50);
 INSERT INTO Artists (Name, Biography, ProfileImage) VALUES 
 ('Zeynep Arslan', 'Yağlı boya sanatçısı', 'linear-gradient(135deg,#1a0533,#a855f7)'),
 ('Murat Demir', 'Suluboya ustası', 'linear-gradient(135deg,#0c4a6e,#22d3ee)'),
@@ -112,12 +123,12 @@ INSERT INTO Artists (Name, Biography, ProfileImage) VALUES
 INSERT INTO Artworks (ArtistID, Title, Category, Price, StockStatus, ImageURL) VALUES 
 (1, 'Boğazd''da Gün Batımı', 'Yağlı Boya', 18500, 'Available', 'linear-gradient(135deg,#1a0533,#4a1a8a,#c2410c,#fbbf24)'),
 (2, 'Mavi Rüya', 'Suluboya', 4200, 'Available', 'linear-gradient(135deg,#0c4a6e,#22d3ee,#a7f3d0)'),
-(3, 'Toprak Ana', 'Heykel', 31000, 'Sold', 'linear-gradient(135deg,#78350f,#d97706,#fef3c7)'),
+(3, 'Toprak Ana', 'Heykel', 31000, 'Available', 'linear-gradient(135deg,#78350f,#d97706,#fef3c7)'),
 (4, 'Dijital Kaos', 'Dijital', 2800, 'Available', 'linear-gradient(135deg,#064e3b,#10b981,#d1fae5)'),
 (5, 'İstanbul Sisli', 'Fotoğraf', 6500, 'Available', 'linear-gradient(135deg,#1e1b4b,#6366f1,#e0e7ff)'),
 (1, 'Kızıl Orman', 'Yağlı Boya', 22000, 'Available', 'linear-gradient(135deg,#450a0a,#dc2626,#fca5a5)'),
 (2, 'Yağmur Sonrası', 'Suluboya', 3800, 'Available', 'linear-gradient(135deg,#1e3a5f,#3b82f6,#bfdbfe)'),
-(3, 'Sonsuzluk', 'Heykel', 45000, 'Sold', 'linear-gradient(135deg,#2d1b69,#8b5cf6,#ede9fe)');
+(3, 'Sonsuzluk', 'Heykel', 45000, 'Available', 'linear-gradient(135deg,#2d1b69,#8b5cf6,#ede9fe)');
 
 INSERT INTO Events (Title, Description, EventDate, Capacity, Price) VALUES 
 ('Yağlı Boya Atölyesi', 'Başlangıç seviyesi yağlı boya teknikleri.', '2026-05-15 10:00:00', 20, 450),

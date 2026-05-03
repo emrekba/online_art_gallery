@@ -533,9 +533,49 @@
         </div>
     </div>
 
+    <!-- COMMENT (REVIEW) MODAL -->
+    <div class="modal-overlay" id="comment-modal" role="dialog" aria-modal="true">
+        <div class="modal-box modal-sm" id="comment-modal-box">
+            <button class="modal-close" id="comment-modal-close" aria-label="Kapat" onclick="closeModal('comment-modal')">✕</button>
+            <div class="auth-modal">
+                <h3 style="margin-bottom:8px;">Yorum & Değerlendirme</h3>
+                <p id="comment-modal-target" style="color:var(--text2); font-size:.9rem; margin-bottom:16px;"></p>
+                <input type="hidden" id="comment-entity-type" value="Artwork">
+                <input type="hidden" id="comment-entity-id">
+                <div class="form-group">
+                    <label>Puanınız</label>
+                    <div id="comment-rating-stars" style="display:flex;gap:6px;font-size:1.6rem;cursor:pointer;color:var(--text3)">
+                        <span data-rating="1">★</span>
+                        <span data-rating="2">★</span>
+                        <span data-rating="3">★</span>
+                        <span data-rating="4">★</span>
+                        <span data-rating="5">★</span>
+                    </div>
+                    <input type="hidden" id="comment-rating-value" value="5">
+                </div>
+                <div class="form-group">
+                    <label>Yorumunuz</label>
+                    <textarea id="comment-content" class="form-input" rows="4" placeholder="Düşüncelerinizi paylaşın..."></textarea>
+                </div>
+                <button class="btn-primary btn-full" onclick="submitComment()">Gönder</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- EDIT RESERVATION MODAL -->
+    <div class="modal-overlay" id="edit-res-modal" role="dialog" aria-modal="true">
+        <div class="modal-box" id="edit-res-modal-box" style="max-width: 600px;">
+            <button class="modal-close" id="edit-res-modal-close" aria-label="Kapat" onclick="closeModal('edit-res-modal')">✕</button>
+            <h3 style="margin-bottom:16px;">Rezervasyonu Güncelle</h3>
+            <div id="edit-res-content">
+                <!-- İçerik JS ile doldurulacak -->
+            </div>
+        </div>
+    </div>
+
     <!-- TOAST -->
     <div class="toast-container" id="toast-container"></div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=12"></script>
 </body>
 </html>
