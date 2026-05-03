@@ -529,7 +529,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Auth buttons
   document.getElementById('btn-login').addEventListener('click', () => {
-    if (state.loggedIn) { doLogout(); return; }
+    if (state.loggedIn) { navigate('profile'); return; }
     openLoginModal();
   });
   document.getElementById('btn-register').addEventListener('click', () => {
