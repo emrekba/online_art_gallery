@@ -107,11 +107,12 @@
 - [x] Kullanıcıya özel %15 indirim fırsatı
 - [x] İndirimli tutarın veritabanına ve profildeki siparişlere yansıması
 
-### Madde 10 — Müşteri Destek ⚠️ Yarım
+### Madde 10 — Müşteri Destek ✅ Tamamlandı
 - [x] Admin panelinde SupportTickets tablosu görünümü var (sadece listeleme)
-- [ ] **İletişim formu (soru gönderme) YOK**
-- [ ] Canlı destek/mesaj sistemi YOK
-- [ ] Destek talebi durumu kullanıcı tarafından görüntüleme YOK
+- [x] **İletişim formu (soru gönderme)** Profil -> Destek Taleplerim altında eklendi
+- [x] Canlı destek yerine talep sistemi kullanıldı
+- [x] Destek talebi durumu kullanıcı tarafından görüntüleme eklendi
+- [x] Admin panelinden taleplere yanıt verme özelliği eklendi
 
 ### Madde 11 — Karşılaştırma ❌ Eksik
 - [ ] Etkinlik karşılaştırma özelliği YOK
@@ -217,7 +218,7 @@
 | 7 | Hesap Yönetimi | ✅ Tamamlandı | 6/6 |
 | 8 | Sipariş ve Rezervasyon Takibi | ✅ Tamamlandı | 6/6 |
 | 9 | İndirim ve Kampanyalar | ✅ Tamamlandı | 6/6 |
-| 10 | Müşteri Destek | ⏳ Yapılacak | 0/6 |
+| 10 | Müşteri Destek | ✅ Tamamlandı | 6/6 |
 | 11 | Karşılaştırma | ⏳ Yapılacak | 0/6 |
 | 12 | Yorum Ekleme | ⏳ Yapılacak | 0/6 |
 | 13 | Yorumları Değerlendirme | ⏳ Yapılacak | 0/6 |

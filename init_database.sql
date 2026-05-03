@@ -106,6 +106,7 @@ CREATE TABLE SupportTickets (
     UserID INT REFERENCES Users(UserID),
     Subject VARCHAR(200) NOT NULL,
     Message TEXT NOT NULL,
+    AdminResponse TEXT,
     Status VARCHAR(50) DEFAULT 'Open',
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

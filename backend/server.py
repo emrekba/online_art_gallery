@@ -270,6 +270,52 @@ def remove_favorite(user_id, artwork_id):
     conn.close()
     return jsonify({'success': True})
 
+@app.route('/api/tickets/<int:user_id>', methods=['GET'])
+def get_user_tickets(user_id):
+    conn = get_db_connection()
+    tickets = conn.execute('SELECT * FROM SupportTickets WHERE UserID = ? ORDER BY CreatedAt DESC', (user_id,)).fetchall()
+    conn.close()
+    return jsonify({'success': True, 'tickets': [dict(ix) for ix in tickets]})
+
+@app.route('/api/tickets', methods=['POST'])
+def create_ticket():
+    data = request.json
+    user_id = data.get('user_id')
+    subject = data.get('subject')
+    message = data.get('message')
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO SupportTickets (UserID, Subject, Message, Status) VALUES (?, ?, ?, ?)',
+                   (user_id, subject, message, 'Open'))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': 'Destek talebiniz başarıyla oluşturuldu.'})
+
+@app.route('/api/tickets', methods=['GET'])
+def get_all_tickets():
+    conn = get_db_connection()
+    tickets = conn.execute('''
+        SELECT t.*, u.FullName as UserName, u.Email as UserEmail
+        FROM SupportTickets t
+        JOIN Users u ON t.UserID = u.UserID
+        ORDER BY t.CreatedAt DESC
+    ''').fetchall()
+    conn.close()
+    return jsonify({'success': True, 'tickets': [dict(ix) for ix in tickets]})
+
+@app.route('/api/tickets/<int:ticket_id>/respond', methods=['PUT'])
+def respond_ticket(ticket_id):
+    data = request.json
+    response_text = data.get('response')
+    
+    conn = get_db_connection()
+    conn.execute('UPDATE SupportTickets SET AdminResponse = ?, Status = ? WHERE TicketID = ?', 
+                 (response_text, 'Answered', ticket_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': 'Talep başarıyla yanıtlandı.'})
+
 if __name__ == '__main__':
     print("Backend sunucusu 5000 portunda çalışıyor...")
     app.run(debug=True, port=5000)

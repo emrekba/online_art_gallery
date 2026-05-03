@@ -3,14 +3,6 @@ let artists = [];
 let artworks = [];
 let events = [];
 
-const tickets = [
-  { id:1, user:'Mehmet Yılmaz', subject:'Ödeme sorunu', date:'02.05.2026', status:'Open' },
-  { id:2, user:'Fatma Öztürk', subject:'Rezervasyon iptali', date:'01.05.2026', status:'Closed' },
-  { id:3, user:'Ali Koç', subject:'Eser hasarlı geldi', date:'30.04.2026', status:'Open' },
-  { id:4, user:'Selin Aydın', subject:'Kargo takibi', date:'29.04.2026', status:'Closed' },
-  { id:5, user:'Hasan Çelik', subject:'İndirim kodu', date:'28.04.2026', status:'Open' },
-];
-
 const API_URL = 'http://127.0.0.1:5000/api';
 
 async function fetchInitialData() {
@@ -163,7 +155,7 @@ function renderEvents() {
 }
 
 // ===== ADMIN TABLES =====
-function renderAdmin() {
+async function renderAdmin() {
   // Event stats
   document.getElementById('event-stats-body').innerHTML = events.map(e => {
     const pct = Math.round(e.registered / e.capacity * 100);
@@ -186,14 +178,24 @@ function renderAdmin() {
       <td><span class="star-sm">★</span> ${a.rating}</td>
     </tr>`;
   }).join('');
+  
   // Tickets
-  document.getElementById('tickets-body').innerHTML = tickets.map(t => {
-    const sc = t.status === 'Open' ? 'open' : 'closed';
-    return `<tr>
-      <td>#${t.id}</td><td>${t.user}</td><td>${t.subject}</td><td>${t.date}</td>
-      <td><span class="status-badge ${sc}">${t.status}</span></td>
-    </tr>`;
-  }).join('');
+  try {
+      const res = await fetch(`${API_URL}/tickets`);
+      const data = await res.json();
+      if(data.success) {
+          document.getElementById('tickets-body').innerHTML = data.tickets.map(t => {
+            const sc = t.Status === 'Open' ? 'open' : 'closed';
+            return `<tr>
+              <td>#${t.TicketID}</td><td>${t.UserName}</td><td>${t.Subject}</td><td>${t.CreatedAt.split(' ')[0]}</td>
+              <td><span class="status-badge ${sc}">${t.Status}</span></td>
+              <td>
+                  ${t.Status === 'Open' ? `<button class="btn-outline" style="padding:4px 8px; font-size:0.8rem;" onclick="openTicketResponseModal(${t.TicketID}, '${t.Subject.replace(/'/g,"\\'").replace(/"/g,"&quot;")}', '${t.Message.replace(/'/g,"\\'").replace(/"/g,"&quot;")}')">Yanıtla</button>` : `<span style="font-size:0.8rem; color:var(--text3);">Yanıtlandı</span>`}
+              </td>
+            </tr>`;
+          }).join('');
+      }
+  } catch(e) {}
 }
 
 // ===== KPI ANIMATION =====
@@ -493,8 +495,62 @@ async function loadProfile() {
                 </div>
             `).join('');
             document.getElementById('profile-reservations-list').innerHTML = resHtml || '<p style="color:var(--text3)">Rezervasyonunuz bulunmamaktadır.</p>';
+            
+            // Render tickets
+            try {
+                const tRes = await fetch(`${API_URL}/tickets/${state.user.id}`);
+                const tData = await tRes.json();
+                if(tData.success) {
+                    const ticketsHtml = tData.tickets.map(t => `
+                        <div style="background:var(--bg3); padding:16px; border-radius:8px; border:1px solid var(--border);">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                                <h4 style="margin:0">${t.Subject}</h4>
+                                <span style="font-size:0.8rem; padding:2px 8px; border-radius:4px; background:${t.Status==='Open'?'rgba(234,179,8,0.2)':'rgba(34,197,94,0.2)'}; color:${t.Status==='Open'?'#eab308':'#4ade80'};">${t.Status==='Open'?'Açık':'Yanıtlandı'}</span>
+                            </div>
+                            <p style="color:var(--text2); font-size:0.9rem; margin-bottom:12px;">${t.Message}</p>
+                            ${t.AdminResponse ? `<div style="background:rgba(168,85,247,0.1); padding:12px; border-radius:6px; border-left:3px solid var(--accent); font-size:0.9rem; margin-bottom:8px;"><strong>Admin Yanıtı:</strong><br>${t.AdminResponse}</div>` : ''}
+                            <div style="font-size:0.75rem; color:var(--text3);">Tarih: ${t.CreatedAt.split(' ')[0]}</div>
+                        </div>
+                    `).join('');
+                    document.getElementById('profile-tickets-list').innerHTML = ticketsHtml || '<p style="color:var(--text3)">Geçmiş talebiniz bulunmamaktadır.</p>';
+                }
+            } catch(e) {}
         }
     } catch(err) { console.error(err); }
+}
+
+async function submitSupportTicket() {
+    const subject = document.getElementById('support-subject').value;
+    const message = document.getElementById('support-message').value;
+    if(!subject || !message) { showToast('Lütfen tüm alanları doldurun.', 'error'); return; }
+    try {
+        const res = await fetch(`${API_URL}/tickets`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({user_id: state.user.id, subject, message})
+        });
+        const data = await res.json();
+        if(data.success) {
+            showToast('Talebiniz gönderildi.', 'success');
+            document.getElementById('support-subject').value = '';
+            document.getElementById('support-message').value = '';
+            loadProfile(); // refresh list
+        } else {
+            showToast('Hata oluştu.', 'error');
+        }
+    } catch(err) {
+        showToast('Sunucu hatası.', 'error');
+    }
+}
+
+function openTicketResponseModal(id, subject, message) {
+    document.getElementById('current-ticket-id').value = id;
+    document.getElementById('ticket-details').innerHTML = `
+        <strong>Konu:</strong> ${subject}<br>
+        <div style="margin-top:8px; font-size:0.9rem; color:var(--text2);">${message}</div>
+    `;
+    document.getElementById('admin-ticket-response').value = '';
+    document.getElementById('ticket-modal').classList.add('open');
 }
 
 async function updateProfile() {
@@ -622,7 +678,32 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('event-modal-close').addEventListener('click', () => closeModal('event-modal'));
   document.getElementById('login-modal-close').addEventListener('click', () => closeModal('login-modal'));
   document.getElementById('checkout-modal-close').addEventListener('click', () => closeModal('checkout-modal'));
+  document.getElementById('ticket-modal-close').addEventListener('click', () => closeModal('ticket-modal'));
   document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); }));
+
+  // Ticket Modal Submit
+  document.getElementById('submit-ticket-response').addEventListener('click', async () => {
+      const id = document.getElementById('current-ticket-id').value;
+      const resp = document.getElementById('admin-ticket-response').value;
+      if(!resp) return;
+      const btn = document.getElementById('submit-ticket-response');
+      btn.textContent = 'Gönderiliyor...'; btn.disabled = true;
+      try {
+          const res = await fetch(`${API_URL}/tickets/${id}/respond`, {
+              method: 'PUT',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({response: resp})
+          });
+          const data = await res.json();
+          if(data.success) {
+              showToast('Yanıt gönderildi.', 'success');
+              closeModal('ticket-modal');
+              renderAdmin(); // refresh
+          }
+      } catch(e) {} finally {
+          btn.textContent = 'Yanıtı Gönder'; btn.disabled = false;
+      }
+  });
 
   // Coupon Apply
   document.getElementById('btn-apply-coupon').addEventListener('click', async () => {

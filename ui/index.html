@@ -338,6 +338,7 @@
                                     <th>Konu</th>
                                     <th>Tarih</th>
                                     <th>Durum</th>
+                                    <th>Aksiyon</th>
                                 </tr>
                             </thead>
                             <tbody id="tickets-body">
@@ -364,6 +365,7 @@
                     <button class="profile-tab" data-ptab="orders" style="padding:12px; text-align:left; background:transparent; border-radius:8px; border:1px solid var(--border); color:var(--text2); cursor:pointer;">Satın Aldıklarım</button>
                     <button class="profile-tab" data-ptab="reservations" style="padding:12px; text-align:left; background:transparent; border-radius:8px; border:1px solid var(--border); color:var(--text2); cursor:pointer;">Etkinlik Kayıtlarım</button>
                     <button class="profile-tab" data-ptab="favorites" style="padding:12px; text-align:left; background:transparent; border-radius:8px; border:1px solid var(--border); color:var(--text2); cursor:pointer;">Favorilerim</button>
+                    <button class="profile-tab" data-ptab="support" style="padding:12px; text-align:left; background:transparent; border-radius:8px; border:1px solid var(--border); color:var(--text2); cursor:pointer;">Destek Taleplerim</button>
                 </div>
                 <div class="profile-content" style="background:var(--bg2); padding:30px; border-radius:16px; border:1px solid var(--border);">
                     <div class="ptab-content active" id="ptab-info">
@@ -397,6 +399,27 @@
                     <div class="ptab-content" id="ptab-favorites" style="display:none;">
                         <h3 style="margin-bottom:20px;">Favori Eserlerim</h3>
                         <div id="profile-favorites-grid" class="artworks-grid" style="grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));">
+                            <!-- JS ile doldurulacak -->
+                        </div>
+                    </div>
+                    <div class="ptab-content" id="ptab-support" style="display:none;">
+                        <h3 style="margin-bottom:20px;">Destek Taleplerim</h3>
+                        
+                        <div style="background:var(--bg3); padding:20px; border-radius:8px; margin-bottom:24px; border:1px solid var(--border);">
+                            <h4 style="margin-bottom:16px;">Yeni Talep Oluştur</h4>
+                            <div class="form-group">
+                                <label>Konu</label>
+                                <input type="text" id="support-subject" class="form-input" placeholder="Talebinizin konusu">
+                            </div>
+                            <div class="form-group">
+                                <label>Mesajınız</label>
+                                <textarea id="support-message" class="form-input" rows="4" placeholder="Size nasıl yardımcı olabiliriz?"></textarea>
+                            </div>
+                            <button class="btn-primary" onclick="submitSupportTicket()">Talep Gönder</button>
+                        </div>
+                        
+                        <h4 style="margin-bottom:16px;">Geçmiş Taleplerim</h4>
+                        <div id="profile-tickets-list" style="display:flex; flex-direction:column; gap:12px;">
                             <!-- JS ile doldurulacak -->
                         </div>
                     </div>
@@ -487,6 +510,25 @@
                     </select>
                 </div>
                 <button class="btn-primary btn-full" id="btn-confirm-checkout">Ödemeyi Tamamla</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TICKET RESPONSE MODAL -->
+    <div class="modal-overlay" id="ticket-modal" role="dialog" aria-modal="true">
+        <div class="modal-box modal-sm" id="ticket-modal-box">
+            <button class="modal-close" id="ticket-modal-close" aria-label="Kapat">✕</button>
+            <div class="auth-modal">
+                <h3 style="margin-bottom:16px;">Talebi Yanıtla</h3>
+                <div id="ticket-details" style="background:var(--bg3);padding:16px;border-radius:8px;margin-bottom:16px; border:1px solid var(--border)">
+                    <!-- Ticket details will be shown here -->
+                </div>
+                <div class="form-group">
+                    <label>Yanıtınız</label>
+                    <textarea id="admin-ticket-response" class="form-input" rows="5" placeholder="Kullanıcıya iletilecek mesajı buraya yazın..."></textarea>
+                </div>
+                <input type="hidden" id="current-ticket-id">
+                <button class="btn-primary btn-full" id="submit-ticket-response">Yanıtı Gönder</button>
             </div>
         </div>
     </div>
