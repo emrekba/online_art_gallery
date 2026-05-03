@@ -81,7 +81,122 @@ def register():
         conn.close()
         return jsonify({'success': False, 'message': 'Bu e-posta adresi zaten kullanılıyor'}), 400
 
+@app.route('/api/profile/<int:user_id>', methods=['GET'])
+def get_profile(user_id):
+    conn = get_db_connection()
+    user = conn.execute('SELECT UserID, FullName, Email, Role, CreatedAt FROM Users WHERE UserID = ?', (user_id,)).fetchone()
+    if not user:
+        conn.close()
+        return jsonify({'success': False, 'message': 'Kullanıcı bulunamadı'}), 404
+        
+    orders = conn.execute('''
+        SELECT o.OrderID, o.OrderDate, o.TotalAmount, o.Status, o.PaymentMethod,
+               a.Title as ArtworkTitle, a.Price, a.ImageURL
+        FROM Orders o
+        JOIN OrderDetails od ON o.OrderID = od.OrderID
+        JOIN Artworks a ON od.ArtworkID = a.ArtworkID
+        WHERE o.UserID = ?
+        ORDER BY o.OrderDate DESC
+    ''', (user_id,)).fetchall()
+    
+    reservations = conn.execute('''
+        SELECT r.ReservationID, r.ParticipantCount, r.TotalPrice, r.Status, r.CreatedAt,
+               e.Title as EventTitle, e.EventDate, e.Price as EventPrice
+        FROM Reservations r
+        JOIN Events e ON r.EventID = e.EventID
+        WHERE r.UserID = ?
+        ORDER BY r.CreatedAt DESC
+    ''', (user_id,)).fetchall()
+    
+    conn.close()
+    return jsonify({
+        'success': True,
+        'user': dict(user),
+        'orders': [dict(ix) for ix in orders],
+        'reservations': [dict(ix) for ix in reservations]
+    })
+
+@app.route('/api/profile/<int:user_id>', methods=['PUT'])
+def update_profile(user_id):
+    data = request.json
+    name = data.get('name')
+    password = data.get('password')
+    
+    conn = get_db_connection()
+    if password:
+        conn.execute('UPDATE Users SET FullName = ?, PasswordHash = ? WHERE UserID = ?', (name, password, user_id))
+    else:
+        conn.execute('UPDATE Users SET FullName = ? WHERE UserID = ?', (name, user_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': 'Profil güncellendi'})
+
+@app.route('/api/orders', methods=['POST'])
+def create_order():
+    data = request.json
+    user_id = data.get('user_id')
+    artwork_id = data.get('artwork_id')
+    payment_method = data.get('payment_method')
+    
+    conn = get_db_connection()
+    artwork = conn.execute('SELECT Price, StockStatus FROM Artworks WHERE ArtworkID = ?', (artwork_id,)).fetchone()
+    
+    if not artwork or artwork['StockStatus'] != 'Available':
+        conn.close()
+        return jsonify({'success': False, 'message': 'Eser müsait değil'}), 400
+        
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO Orders (UserID, TotalAmount, PaymentMethod, Status) VALUES (?, ?, ?, ?)',
+                   (user_id, artwork['Price'], payment_method, 'Completed'))
+    order_id = cursor.lastrowid
+    
+    cursor.execute('INSERT INTO OrderDetails (OrderID, ArtworkID, Price) VALUES (?, ?, ?)',
+                   (order_id, artwork_id, artwork['Price']))
+                   
+    cursor.execute('UPDATE Artworks SET StockStatus = ? WHERE ArtworkID = ?', ('Sold', artwork_id))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'success': True, 'message': 'Sipariş başarıyla oluşturuldu'})
+
+@app.route('/api/reservations', methods=['POST'])
+def create_reservation():
+    data = request.json
+    user_id = data.get('user_id')
+    event_id = data.get('event_id')
+    participant_count = data.get('participant_count', 1)
+    
+    conn = get_db_connection()
+    event = conn.execute('SELECT Price, Capacity FROM Events WHERE EventID = ?', (event_id,)).fetchone()
+    
+    total_price = event['Price'] * participant_count
+    
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO Reservations (UserID, EventID, ParticipantCount, TotalPrice, Status) VALUES (?, ?, ?, ?, ?)',
+                   (user_id, event_id, participant_count, total_price, 'Active'))
+    conn.commit()
+    conn.close()
+    
+    return jsonify({'success': True, 'message': 'Rezervasyon başarıyla oluşturuldu'})
+
+@app.route('/api/reservations/<int:res_id>', methods=['PUT'])
+def update_reservation(res_id):
+    data = request.json
+    action = data.get('action')
+    
+    conn = get_db_connection()
+    if action == 'cancel':
+        conn.execute('UPDATE Reservations SET Status = ? WHERE ReservationID = ?', ('Cancelled', res_id))
+    elif action == 'update':
+        count = int(data.get('participant_count'))
+        res = conn.execute('SELECT e.Price FROM Reservations r JOIN Events e ON r.EventID = e.EventID WHERE r.ReservationID = ?', (res_id,)).fetchone()
+        new_price = res['Price'] * count
+        conn.execute('UPDATE Reservations SET ParticipantCount = ?, TotalPrice = ? WHERE ReservationID = ?', (count, new_price, res_id))
+        
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': 'Rezervasyon güncellendi'})
+
 if __name__ == '__main__':
-    init_db()
     print("Backend sunucusu 5000 portunda çalışıyor...")
     app.run(debug=True, port=5000)

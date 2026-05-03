@@ -58,6 +58,7 @@ async function fetchInitialData() {
 
 // ===== STATE =====
 let state = { page:'home', catFilter:'Tümü', evtFilter:'Tümü', artSearch:'', evtSearch:'', favorites:new Set(), loggedIn:false, user:null };
+let currentCheckoutArtwork = null;
 
 // ===== NAVIGATION =====
 function navigate(page) {
@@ -71,6 +72,7 @@ function navigate(page) {
   if (page === 'artworks') renderArtworks();
   if (page === 'events') renderEvents();
   if (page === 'admin') animateKPIs();
+  if (page === 'profile') loadProfile();
 }
 
 // ===== RENDER HOME =====
@@ -266,6 +268,10 @@ function openEvent(id) {
       <div style="background:var(--bg3);padding:14px;border-radius:10px">★ <strong>Puan</strong><br><span style="color:var(--gold)">${e.rating}/5.0</span></div>
       <div style="background:var(--bg3);padding:14px;border-radius:10px">💰 <strong>Ücret</strong><br><span style="color:var(--gold)">₺${e.price.toLocaleString('tr-TR')}/kişi</span></div>
     </div>
+    <div style="margin-bottom:20px; display:flex; align-items:center; gap:12px; background:var(--bg3); padding:10px; border-radius:8px;">
+        <label>Katılımcı Sayısı:</label>
+        <input type="number" id="res-count" value="1" min="1" max="${e.capacity - e.registered}" style="width:60px; padding:4px; border-radius:4px; border:1px solid var(--border); background:var(--bg2); color:white;">
+    </div>
     <div style="margin-bottom:20px">
       <div style="display:flex;justify-content:space-between;font-size:.8rem;color:var(--text2);margin-bottom:6px"><span>Doluluk Oranı</span><span>${pct}%</span></div>
       <div style="height:6px;background:var(--bg3);border-radius:4px;overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--accent);border-radius:4px"></div></div>
@@ -292,13 +298,48 @@ function toggleFav(e, id) {
 function buyArtwork(id) {
   if (!state.loggedIn) { closeModal('artwork-modal'); openLoginModal(); return; }
   const a = artworks.find(x => x.id === id);
-  if (a) { a.status = 'Sold'; showToast(`"${a.title}" satın alındı! ✓`, 'success'); closeModal('artwork-modal'); renderArtworks(); renderHome(); }
+  if (a) {
+      currentCheckoutArtwork = a;
+      document.getElementById('checkout-summary').innerHTML = `
+        <h4>${a.title}</h4>
+        <p style="color:var(--text2); margin-top:4px">Kategori: ${a.category}</p>
+        <p style="margin-top:12px; font-size:1.2rem;">Toplam Tutar: <strong style="color:var(--gold)">₺${a.price.toLocaleString('tr-TR')}</strong></p>
+      `;
+      closeModal('artwork-modal');
+      document.getElementById('checkout-modal').classList.add('open');
+  }
 }
 
-function reserveEvent(id) {
+async function reserveEvent(id) {
   if (!state.loggedIn) { closeModal('event-modal'); openLoginModal(); return; }
   const e = events.find(x => x.id === id);
-  if (e && e.registered < e.capacity) { e.registered++; showToast(`"${e.title}" için rezervasyon oluşturuldu! ✓`, 'success'); closeModal('event-modal'); renderEvents(); renderHome(); }
+  const countInput = document.getElementById('res-count');
+  const count = countInput ? parseInt(countInput.value) : 1;
+  
+  if(!count || count < 1) return;
+  
+  if (e && e.registered + count <= e.capacity) {
+      try {
+          const res = await fetch(`${API_URL}/reservations`, {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ user_id: state.user.id, event_id: e.id, participant_count: count })
+          });
+          const data = await res.json();
+          if(data.success) {
+              e.registered += count;
+              showToast(`"${e.title}" için ${count} kişilik rezervasyon yapıldı! ✓`, 'success');
+              closeModal('event-modal');
+              renderEvents(); renderHome();
+          } else {
+              showToast(data.message, 'error');
+          }
+      } catch(err) {
+          showToast('Rezervasyon başarısız. Sunucu hatası.', 'error');
+      }
+  } else {
+      showToast('Yeterli kontenjan yok!', 'error');
+  }
 }
 
 // ===== AUTH =====
@@ -322,6 +363,7 @@ async function doLogin() {
           state.user = data.user;
           document.getElementById('btn-login').textContent = state.user.name;
           document.getElementById('btn-register').textContent = 'Çıkış';
+          document.getElementById('nav-item-profile').style.display = 'inline-block';
           closeModal('login-modal');
           showToast(`Hoş geldiniz, ${state.user.name}! ✓`, 'success');
       } else {
@@ -351,6 +393,7 @@ async function doSignup() {
           state.user = data.user;
           document.getElementById('btn-login').textContent = data.user.name;
           document.getElementById('btn-register').textContent = 'Çıkış';
+          document.getElementById('nav-item-profile').style.display = 'inline-block';
           closeModal('login-modal');
           showToast(`Kayıt başarılı, hoş geldiniz ${data.user.name}! ✓`, 'success');
       } else {
@@ -367,6 +410,97 @@ function showToast(msg, type = 'success') {
   const t = document.createElement('div');
   t.className = `toast ${type}`; t.textContent = msg; c.appendChild(t);
   setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateY(20px)'; t.style.transition = '.3s'; setTimeout(() => t.remove(), 300); }, 2500);
+}
+
+// ===== PROFILE SYSTEM =====
+async function loadProfile() {
+    if(!state.loggedIn) return;
+    try {
+        const res = await fetch(`${API_URL}/profile/${state.user.id}`);
+        const data = await res.json();
+        if(data.success) {
+            document.getElementById('prof-email').value = data.user.Email;
+            document.getElementById('prof-name').value = data.user.FullName;
+            
+            // Render orders
+            const ordersHtml = data.orders.map(o => `
+                <div style="background:var(--bg3); padding:16px; border-radius:8px; display:flex; justify-content:space-between;">
+                    <div>
+                        <h4 style="margin:0 0 8px 0">${o.ArtworkTitle}</h4>
+                        <span style="color:var(--text2); font-size:0.85rem;">Tarih: ${o.OrderDate.split(' ')[0]} | Yöntem: ${o.PaymentMethod}</span>
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="font-weight:bold; color:var(--gold);">₺${o.TotalAmount.toLocaleString('tr-TR')}</span>
+                        <br><span style="font-size:0.8rem; padding:2px 8px; border-radius:4px; background:rgba(34,197,94,0.2); color:#4ade80;">${o.Status}</span>
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('profile-orders-list').innerHTML = ordersHtml || '<p style="color:var(--text3)">Henüz siparişiniz bulunmamaktadır.</p>';
+            
+            // Render reservations
+            const resHtml = data.reservations.map(r => `
+                <div style="background:var(--bg3); padding:16px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <h4 style="margin:0 0 8px 0">${r.EventTitle}</h4>
+                        <span style="color:var(--text2); font-size:0.85rem;">Kayıt Tarihi: ${r.CreatedAt.split(' ')[0]} | Kişi: ${r.ParticipantCount}</span>
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="font-weight:bold; color:var(--gold);">₺${r.TotalPrice.toLocaleString('tr-TR')}</span>
+                        <br>
+                        ${r.Status === 'Active' 
+                            ? `<button class="btn-outline" style="padding:4px 8px; font-size:0.8rem; margin-top:8px; color:#ef4444; border-color:#ef4444" onclick="cancelReservation(${r.ReservationID})">İptal Et</button>`
+                            : `<span style="font-size:0.8rem; padding:2px 8px; border-radius:4px; background:rgba(239,68,68,0.2); color:#ef4444;">İptal Edildi</span>`
+                        }
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('profile-reservations-list').innerHTML = resHtml || '<p style="color:var(--text3)">Rezervasyonunuz bulunmamaktadır.</p>';
+        }
+    } catch(err) { console.error(err); }
+}
+
+async function updateProfile() {
+    const name = document.getElementById('prof-name').value;
+    const pass = document.getElementById('prof-pass').value;
+    try {
+        const res = await fetch(`${API_URL}/profile/${state.user.id}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name: name, password: pass})
+        });
+        const data = await res.json();
+        if(data.success) {
+            showToast('Profil başarıyla güncellendi.', 'success');
+            state.user.name = name;
+            document.getElementById('btn-login').textContent = name;
+            document.getElementById('prof-pass').value = ''; // clear password field
+        }
+    } catch(err) { showToast('Güncelleme başarısız.', 'error'); }
+}
+
+async function cancelReservation(resId) {
+    if(!confirm('Bu rezervasyonu iptal etmek istediğinize emin misiniz?')) return;
+    try {
+        const res = await fetch(`${API_URL}/reservations/${resId}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({action: 'cancel'})
+        });
+        const data = await res.json();
+        if(data.success) {
+            showToast('Rezervasyon iptal edildi.', 'success');
+            loadProfile(); // refresh list
+        }
+    } catch(err) {}
+}
+
+function doLogout() {
+    state.loggedIn = false; state.user = null; 
+    document.getElementById('btn-login').textContent = 'Giriş Yap'; 
+    document.getElementById('btn-register').textContent = 'Kayıt Ol'; 
+    document.getElementById('nav-item-profile').style.display = 'none';
+    if(state.page === 'profile') navigate('home');
+    showToast('Çıkış yapıldı', 'error');
 }
 
 // ===== INIT =====
@@ -395,11 +529,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Auth buttons
   document.getElementById('btn-login').addEventListener('click', () => {
-    if (state.loggedIn) { state.loggedIn = false; state.user = null; document.getElementById('btn-login').textContent = 'Giriş Yap'; document.getElementById('btn-register').textContent = 'Kayıt Ol'; showToast('Çıkış yapıldı', 'error'); return; }
+    if (state.loggedIn) { doLogout(); return; }
     openLoginModal();
   });
   document.getElementById('btn-register').addEventListener('click', () => {
-    if (state.loggedIn) { state.loggedIn = false; state.user = null; document.getElementById('btn-login').textContent = 'Giriş Yap'; document.getElementById('btn-register').textContent = 'Kayıt Ol'; showToast('Çıkış yapıldı', 'error'); return; }
+    if (state.loggedIn) { doLogout(); return; }
     openLoginModal();
   });
 
@@ -407,7 +541,56 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('artwork-modal-close').addEventListener('click', () => closeModal('artwork-modal'));
   document.getElementById('event-modal-close').addEventListener('click', () => closeModal('event-modal'));
   document.getElementById('login-modal-close').addEventListener('click', () => closeModal('login-modal'));
+  document.getElementById('checkout-modal-close').addEventListener('click', () => closeModal('checkout-modal'));
   document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); }));
+
+  // Checkout confirm
+  document.getElementById('btn-confirm-checkout').addEventListener('click', async () => {
+      if(!currentCheckoutArtwork) return;
+      const method = document.getElementById('checkout-method').value;
+      const btn = document.getElementById('btn-confirm-checkout');
+      btn.textContent = 'İşleniyor...'; btn.disabled = true;
+      
+      try {
+          const res = await fetch(`${API_URL}/orders`, {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({
+                  user_id: state.user.id,
+                  artwork_id: currentCheckoutArtwork.id,
+                  payment_method: method
+              })
+          });
+          const data = await res.json();
+          if(data.success) {
+              showToast(`"${currentCheckoutArtwork.title}" satın alındı! ✓`, 'success');
+              currentCheckoutArtwork.status = 'Sold';
+              closeModal('checkout-modal');
+              renderArtworks(); renderHome();
+          } else {
+              showToast(data.message, 'error');
+          }
+      } catch(err) {
+          showToast('İşlem başarısız.', 'error');
+      } finally {
+          btn.textContent = 'Ödemeyi Tamamla'; btn.disabled = false;
+      }
+  });
+
+  // Profile tabs
+  document.querySelectorAll('.profile-tab').forEach(tab => {
+      tab.addEventListener('click', (e) => {
+          document.querySelectorAll('.profile-tab').forEach(t => {
+              t.classList.remove('active');
+              t.style.background = 'transparent'; t.style.border = '1px solid var(--border)'; t.style.color = 'var(--text2)';
+          });
+          e.target.classList.add('active');
+          e.target.style.background = 'var(--bg3)'; e.target.style.border = 'none'; e.target.style.color = 'var(--text1)';
+          
+          document.querySelectorAll('.ptab-content').forEach(c => c.style.display = 'none');
+          document.getElementById('ptab-' + e.target.dataset.ptab).style.display = 'block';
+      });
+  });
 
   // Auth tabs
   document.getElementById('tab-login').addEventListener('click', () => {

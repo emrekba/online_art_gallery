@@ -23,6 +23,7 @@
                 <li><a href="#" class="nav-link active" data-page="home" id="nav-home">Ana Sayfa</a></li>
                 <li><a href="#" class="nav-link" data-page="artworks" id="nav-artworks">Eserler</a></li>
                 <li><a href="#" class="nav-link" data-page="events" id="nav-events">Etkinlikler</a></li>
+                <li id="nav-item-profile" style="display:none;"><a href="#" class="nav-link" data-page="profile" id="nav-profile">Profilim</a></li>
                 <li><a href="#" class="nav-link" data-page="admin" id="nav-admin">Dashboard</a></li>
             </ul>
             <div class="nav-actions">
@@ -343,6 +344,54 @@
             </div>
         </section>
 
+        <!-- ========== PROFILE PAGE ========== -->
+        <section class="page" id="page-profile">
+            <div class="page-header">
+                <div class="page-header-content">
+                    <p class="section-tag">✦ Hesabım</p>
+                    <h1 class="page-title">Profilim</h1>
+                </div>
+            </div>
+            
+            <div class="profile-container" style="max-width:1000px; margin: 0 auto; padding: 20px; display: grid; grid-template-columns: 250px 1fr; gap: 30px;">
+                <div class="profile-sidebar" style="display:flex; flex-direction:column; gap:8px;">
+                    <button class="profile-tab active" data-ptab="info" style="padding:12px; text-align:left; background:var(--bg3); border-radius:8px; border:none; color:var(--text1); cursor:pointer;">Hesap Bilgileri</button>
+                    <button class="profile-tab" data-ptab="orders" style="padding:12px; text-align:left; background:transparent; border-radius:8px; border:1px solid var(--border); color:var(--text2); cursor:pointer;">Satın Aldıklarım</button>
+                    <button class="profile-tab" data-ptab="reservations" style="padding:12px; text-align:left; background:transparent; border-radius:8px; border:1px solid var(--border); color:var(--text2); cursor:pointer;">Etkinlik Kayıtlarım</button>
+                </div>
+                <div class="profile-content" style="background:var(--bg2); padding:30px; border-radius:16px; border:1px solid var(--border);">
+                    <div class="ptab-content active" id="ptab-info">
+                        <h3 style="margin-bottom:20px;">Kişisel Bilgiler</h3>
+                        <div class="form-group">
+                            <label>E-posta Adresi</label>
+                            <input type="email" id="prof-email" class="form-input" disabled style="opacity:0.7">
+                        </div>
+                        <div class="form-group">
+                            <label>Ad Soyad</label>
+                            <input type="text" id="prof-name" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Yeni Şifre (Değiştirmek istemiyorsanız boş bırakın)</label>
+                            <input type="password" id="prof-pass" class="form-input" placeholder="••••••••">
+                        </div>
+                        <button class="btn-primary" onclick="updateProfile()">Bilgileri Güncelle</button>
+                    </div>
+                    <div class="ptab-content" id="ptab-orders" style="display:none;">
+                        <h3 style="margin-bottom:20px;">Satın Aldığım Eserler</h3>
+                        <div id="profile-orders-list" style="display:flex; flex-direction:column; gap:12px;">
+                            <!-- JS ile doldurulacak -->
+                        </div>
+                    </div>
+                    <div class="ptab-content" id="ptab-reservations" style="display:none;">
+                        <h3 style="margin-bottom:20px;">Etkinlik Kayıtlarım</h3>
+                        <div id="profile-reservations-list" style="display:flex; flex-direction:column; gap:12px;">
+                            <!-- JS ile doldurulacak -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
     </main>
 
     <!-- ARTWORK DETAIL MODAL -->
@@ -400,6 +449,27 @@
                     </div>
                     <button class="btn-primary btn-full" id="submit-signup">Kayıt Ol</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CHECKOUT MODAL -->
+    <div class="modal-overlay" id="checkout-modal" role="dialog" aria-modal="true">
+        <div class="modal-box modal-sm" id="checkout-modal-box">
+            <button class="modal-close" id="checkout-modal-close" aria-label="Kapat">✕</button>
+            <div class="auth-modal">
+                <h3 style="margin-bottom:16px;">Güvenli Ödeme</h3>
+                <div id="checkout-summary" style="background:var(--bg3);padding:16px;border-radius:8px;margin-bottom:16px; border:1px solid var(--border)">
+                    <!-- summary -->
+                </div>
+                <div class="form-group">
+                    <label>Ödeme Yöntemi</label>
+                    <select id="checkout-method" class="form-input">
+                        <option value="Kredi Kartı">Kredi Kartı (Önerilen)</option>
+                        <option value="Havale / EFT">Havale / EFT</option>
+                    </select>
+                </div>
+                <button class="btn-primary btn-full" id="btn-confirm-checkout">Ödemeyi Tamamla</button>
             </div>
         </div>
     </div>
