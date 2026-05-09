@@ -120,10 +120,10 @@
 - [x] Destek taleplerinin durumunu görüntüleme
 - [x] Admin panelinden taleplere yanıt verme özelliği
 
-### Madde 11 — Karşılaştırma ❌ Eksik
-- [ ] Birden fazla etkinliği tarih, ücret ve kontenjan açısından karşılaştırma YOK
-- [ ] Birden fazla eseri kategori, fiyat ve sanatçı açısından karşılaştırma YOK
-- [ ] Karşılaştırma sonuçlarını kaydetme YOK
+### Madde 11 — Karşılaştırma ✅ Tamamlandı
+- [x] Birden fazla etkinliği tarih, ücret ve kontenjan açısından karşılaştırma Eklendi
+- [x] Birden fazla eseri kategori, fiyat ve sanatçı açısından karşılaştırma Eklendi
+- [x] Karşılaştırma sonuçlarını kaydetme Eklendi
 
 ### Madde 12 — Yorum Ekleme ✅ Tamamlandı
 - [x] Kullanıcıların eserler hakkında yorum yapabilmesi (Profil > Satın Aldıklarım > "Yorum Yap" + Eser modalı)
@@ -226,7 +226,7 @@
 | 8 | Sipariş ve Rezervasyon Takibi | ✅ Tamamlandı | 6/6 |
 | 9 | İndirim ve Kampanyalar | ✅ Tamamlandı | 6/6 |
 | 10 | Müşteri Destek | ✅ Tamamlandı | 6/6 |
-| 11 | Karşılaştırma | ⏳ Yapılacak | 0/6 |
+| 11 | Karşılaştırma | ✅ Tamamlandı | 6/6 |
 | 12 | Yorum Ekleme | ✅ Tamamlandı | 6/6 |
 | 13 | Yorumları Değerlendirme | ⏳ Yapılacak | 0/6 |
 | 14 | Yorumlara Yanıt | ⏳ Yapılacak | 0/6 |

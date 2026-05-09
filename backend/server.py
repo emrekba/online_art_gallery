@@ -32,6 +32,21 @@ def init_db():
         print("Migration: Artworks tablosuna ViewCount kolonu ekleniyor...")
         cur.execute('ALTER TABLE Artworks ADD COLUMN ViewCount INTEGER DEFAULT 0')
         conn.commit()
+        
+    cur.execute("PRAGMA table_info(SavedComparisons)")
+    if not cur.fetchall():
+        print("Migration: SavedComparisons tablosu ekleniyor...")
+        cur.execute('''
+        CREATE TABLE SavedComparisons (
+            ComparisonID INTEGER PRIMARY KEY AUTOINCREMENT,
+            UserID INTEGER REFERENCES Users(UserID),
+            EntityType TEXT NOT NULL,
+            EntityIDs TEXT NOT NULL,
+            CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+        ''')
+        conn.commit()
+        
     conn.close()
 
 def get_db_connection():
@@ -408,6 +423,38 @@ def respond_ticket(ticket_id):
     conn.commit()
     conn.close()
     return jsonify({'success': True, 'message': 'Talep başarıyla yanıtlandı.'})
+
+@app.route('/api/comparisons', methods=['POST'])
+def save_comparison():
+    data = request.json
+    user_id = data.get('user_id')
+    entity_type = data.get('entity_type')
+    entity_ids = data.get('entity_ids')
+    
+    if not user_id or not entity_type or not entity_ids:
+        return jsonify({'success': False, 'message': 'Eksik parametre'}), 400
+        
+    ids_str = ','.join(map(str, entity_ids))
+    conn = get_db_connection()
+    conn.execute('INSERT INTO SavedComparisons (UserID, EntityType, EntityIDs) VALUES (?, ?, ?)', (user_id, entity_type, ids_str))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': 'Karşılaştırma başarıyla kaydedildi'})
+
+@app.route('/api/comparisons/<int:user_id>', methods=['GET'])
+def get_comparisons(user_id):
+    conn = get_db_connection()
+    comparisons = conn.execute('SELECT * FROM SavedComparisons WHERE UserID = ? ORDER BY CreatedAt DESC', (user_id,)).fetchall()
+    conn.close()
+    return jsonify({'success': True, 'comparisons': [dict(c) for c in comparisons]})
+
+@app.route('/api/comparisons/<int:comparison_id>', methods=['DELETE'])
+def delete_comparison(comparison_id):
+    conn = get_db_connection()
+    conn.execute('DELETE FROM SavedComparisons WHERE ComparisonID = ?', (comparison_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
 
 
 # ===== COMMENTS / REVIEWS (Madde 12, 15) =====

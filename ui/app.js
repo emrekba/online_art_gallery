@@ -50,7 +50,7 @@ async function fetchInitialData() {
 
 
 // ===== STATE =====
-let state = { page:'home', catFilter:'Tümü', evtFilter:'Tümü', artSearch:'', evtSearch:'', favorites:new Set(), loggedIn:false, user:null };
+let state = { page:'home', catFilter:'Tümü', evtFilter:'Tümü', artSearch:'', evtSearch:'', favorites:new Set(), loggedIn:false, user:null, compareEvents:[], compareArtworks:[], compareType:null };
 let currentCheckoutArtwork = null;
 let currentCheckoutType = 'artwork'; // 'artwork' | 'event'
 let currentCheckoutReservationData = null;
@@ -92,10 +92,14 @@ function renderHome() {
 function artworkCard(a) {
   const artist = artists.find(ar => ar.id === a.artistId);
   const liked = state.favorites.has(a.id);
+  const isCompared = state.compareType === 'Artwork' && state.compareArtworks.includes(a.id);
   return `<div class="artwork-card" data-id="${a.id}" onclick="openArtwork(${a.id})">
     <div class="card-image">
       <div class="artwork-gradient" style="background:${a.gradient}"></div>
       <button class="card-fav ${liked?'liked':''}" data-id="${a.id}" onclick="toggleFav(event,${a.id})">♥</button>
+      <button class="compare-btn ${isCompared ? 'active' : ''}" onclick="toggleCompare('Artwork', ${a.id}, event)" title="Karşılaştırmaya Ekle">
+        ${isCompared ? '✓ Karşılaştırılıyor' : '+ Karşılaştır'}
+      </button>
     </div>
     <div class="card-body">
       <span class="card-cat">${a.category}</span>
@@ -115,11 +119,15 @@ function artworkCard(a) {
 // ===== EVENT CARD =====
 function eventCard(e) {
   const pct = Math.round(e.registered / e.capacity * 100);
+  const isCompared = state.compareType === 'Event' && state.compareEvents.includes(e.id);
   return `<div class="event-card" onclick="openEvent(${e.id})">
     <div class="event-top">
       <div class="event-gradient" style="background:${e.gradient}"></div>
       <div class="event-date-badge"><span class="day">${e.day}</span><span class="month">${e.month}</span></div>
       <span class="event-type-badge">${e.type}</span>
+      <button class="compare-btn ${isCompared ? 'active' : ''}" onclick="toggleCompare('Event', ${e.id}, event)" title="Karşılaştırmaya Ekle">
+        ${isCompared ? '✓ Karşılaştırılıyor' : '+ Karşılaştır'}
+      </button>
     </div>
     <div class="event-body">
       <h3>${e.title}</h3>
@@ -612,6 +620,147 @@ function selectTimeSlot(el, datetime) {
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
+// ===== COMPARISON SYSTEM =====
+function toggleCompare(type, id, event) {
+  if (event) event.stopPropagation();
+  
+  if (state.compareType && state.compareType !== type) {
+    state.compareEvents = [];
+    state.compareArtworks = [];
+  }
+  state.compareType = type;
+  
+  const arr = type === 'Event' ? state.compareEvents : state.compareArtworks;
+  const idx = arr.indexOf(id);
+  
+  if (idx > -1) {
+    arr.splice(idx, 1);
+  } else {
+    if (arr.length >= 3) {
+      showToast('En fazla 3 öğe karşılaştırabilirsiniz.', 'error');
+      return;
+    }
+    arr.push(id);
+  }
+  
+  if (arr.length === 0) state.compareType = null;
+  
+  updateCompareBar();
+  if (type === 'Event') renderEvents();
+  if (type === 'Artwork') renderArtworks();
+  if (state.page === 'home') renderHome();
+}
+
+function updateCompareBar() {
+  const bar = document.getElementById('compare-bar');
+  if (!bar) return;
+  const count = state.compareType === 'Event' ? state.compareEvents.length : (state.compareType === 'Artwork' ? state.compareArtworks.length : 0);
+  
+  if (count > 0) {
+    bar.classList.add('visible');
+    document.getElementById('compare-count').textContent = count;
+    document.getElementById('compare-count').nextElementSibling.textContent = (state.compareType === 'Event' ? 'etkinlik' : 'eser') + ' seçildi (Maks: 3)';
+  } else {
+    bar.classList.remove('visible');
+    closeModal('compare-modal');
+  }
+}
+
+function clearCompare() {
+  state.compareEvents = [];
+  state.compareArtworks = [];
+  state.compareType = null;
+  updateCompareBar();
+  renderEvents();
+  renderArtworks();
+  if (state.page === 'home') renderHome();
+}
+
+function openCompareModal() {
+  if (!state.compareType) return;
+  
+  const isEvent = state.compareType === 'Event';
+  const arr = isEvent ? state.compareEvents : state.compareArtworks;
+  if (arr.length === 0) return;
+  
+  let colsHtml = '';
+  
+  if (isEvent) {
+      const selectedEvents = arr.map(id => events.find(e => e.id === id)).filter(Boolean);
+      selectedEvents.forEach(e => {
+        colsHtml += `
+          <div class="compare-col">
+            <div style="height:120px;border-radius:8px;margin-bottom:12px;background:${e.gradient}"></div>
+            <h4 style="margin-bottom:8px;font-family:var(--font-display);font-size:1.2rem">${e.title}</h4>
+            <span class="event-type-badge" style="position:static;display:inline-block;margin-bottom:16px">${e.type}</span>
+            <div class="compare-row"><span class="compare-label">📅 Tarih</span><span class="compare-value">${e.date}</span></div>
+            <div class="compare-row"><span class="compare-label">💰 Ücret</span><span class="compare-value" style="color:var(--gold);font-weight:600">₺${e.price.toLocaleString('tr-TR')}</span></div>
+            <div class="compare-row"><span class="compare-label">👥 Kontenjan</span><span class="compare-value">${e.baseCapacity} kişi</span></div>
+            <div class="compare-row"><span class="compare-label">★ Puan</span><span class="compare-value">${e.rating}/5.0</span></div>
+            <button class="btn-outline btn-full" style="margin-top:16px;font-size:0.85rem;border-color:rgba(239,68,68,0.5);color:#ef4444" onclick="toggleCompare('Event', ${e.id}, event); if(state.compareEvents.length===0) closeModal('compare-modal'); else openCompareModal();">Kaldır</button>
+          </div>
+        `;
+      });
+  } else {
+      const selectedArtworks = arr.map(id => artworks.find(a => a.id === id)).filter(Boolean);
+      selectedArtworks.forEach(a => {
+        const artist = artists.find(ar => ar.id === a.artistId);
+        colsHtml += `
+          <div class="compare-col">
+            <div style="height:120px;border-radius:8px;margin-bottom:12px;background:${a.gradient}"></div>
+            <h4 style="margin-bottom:8px;font-family:var(--font-display);font-size:1.2rem">${a.title}</h4>
+            <span style="font-size:0.8rem;color:var(--accent);text-transform:uppercase;margin-bottom:16px;display:inline-block">${a.category}</span>
+            <div class="compare-row"><span class="compare-label">🎨 Sanatçı</span><span class="compare-value">${artist ? artist.name : '-'}</span></div>
+            <div class="compare-row"><span class="compare-label">💰 Fiyat</span><span class="compare-value" style="color:var(--gold);font-weight:600">₺${a.price.toLocaleString('tr-TR')}</span></div>
+            <div class="compare-row"><span class="compare-label">👁️ Görüntülenme</span><span class="compare-value">${a.viewCount || 0}</span></div>
+            <div class="compare-row"><span class="compare-label">★ Puan</span><span class="compare-value">${a.rating}/5.0</span></div>
+            <button class="btn-outline btn-full" style="margin-top:16px;font-size:0.85rem;border-color:rgba(239,68,68,0.5);color:#ef4444" onclick="toggleCompare('Artwork', ${a.id}, event); if(state.compareArtworks.length===0) closeModal('compare-modal'); else openCompareModal();">Kaldır</button>
+          </div>
+        `;
+      });
+  }
+  
+  document.getElementById('compare-modal-grid').innerHTML = colsHtml;
+  document.getElementById('compare-modal-title').textContent = isEvent ? 'Etkinlik Karşılaştırma' : 'Eser Karşılaştırma';
+  
+  const saveBtn = document.getElementById('btn-save-compare');
+  if (saveBtn) {
+    saveBtn.style.display = state.loggedIn ? 'block' : 'none';
+  }
+  
+  document.getElementById('compare-modal').classList.add('open');
+}
+
+async function saveCurrentComparison() {
+    if (!state.loggedIn) { showToast('Giriş yapmalısınız', 'error'); return; }
+    if (!state.compareType) return;
+    const arr = state.compareType === 'Event' ? state.compareEvents : state.compareArtworks;
+    if (arr.length === 0) return;
+    
+    try {
+        const res = await fetch(`${API_URL}/comparisons`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                user_id: state.user.id,
+                entity_type: state.compareType,
+                entity_ids: arr
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('Karşılaştırma başarıyla kaydedildi!', 'success');
+            closeModal('compare-modal');
+            clearCompare();
+            loadSavedComparisons(); 
+        } else {
+            showToast(data.message || 'Hata oluştu', 'error');
+        }
+    } catch(err) {
+        showToast('Sunucuya bağlanılamadı.', 'error');
+    }
+}
+
 // ===== ACTIONS =====
 async function toggleFav(e, id) {
   e.stopPropagation();
@@ -878,6 +1027,9 @@ async function loadProfile() {
                     document.getElementById('profile-tickets-list').innerHTML = ticketsHtml || '<p style="color:var(--text3)">Geçmiş talebiniz bulunmamaktadır.</p>';
                 }
             } catch(e) {}
+            
+            // Load saved comparisons
+            loadSavedComparisons();
         }
     } catch(err) { console.error(err); }
 }
@@ -1455,3 +1607,67 @@ document.addEventListener('DOMContentLoaded', () => {
   // Animate hero stats
   animateStats();
 });
+
+// ===== SAVED COMPARISONS =====
+async function loadSavedComparisons() {
+    if (!state.loggedIn || !state.user) return;
+    try {
+        const res = await fetch(`${API_URL}/comparisons/${state.user.id}`);
+        const data = await res.json();
+        if (data.success) {
+            renderSavedComparisons(data.comparisons);
+        }
+    } catch(err) {
+        console.error(err);
+    }
+}
+
+function renderSavedComparisons(comparisons) {
+    const list = document.getElementById('saved-comparisons-list');
+    if (!list) return;
+    if (!comparisons || comparisons.length === 0) {
+        list.innerHTML = '<p style="color:var(--text3);text-align:center;padding:20px;">Henüz kaydedilmiş bir karşılaştırmanız bulunmuyor.</p>';
+        return;
+    }
+    
+    let html = '';
+    comparisons.forEach(c => {
+        const date = new Date(c.CreatedAt).toLocaleDateString('tr-TR', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
+        const typeStr = c.EntityType === 'Artwork' ? '🎨 Eserler' : '📅 Etkinlikler';
+        html += `
+            <div style="background:var(--bg3);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                    <h4 style="margin-bottom:4px;">${typeStr}</h4>
+                    <p style="font-size:0.8rem;color:var(--text3);margin-bottom:8px;">Tarih: ${date}</p>
+                    <p style="font-size:0.8rem;color:var(--accent);">ID'ler: ${c.EntityIDs}</p>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn-primary" style="padding:6px 12px;font-size:0.8rem;" onclick="openSavedComparison('${c.EntityType}', '${c.EntityIDs}')">Görüntüle</button>
+                    <button class="btn-outline" style="padding:6px 12px;font-size:0.8rem;border-color:var(--red);color:var(--red);" onclick="deleteSavedComparison(${c.ComparisonID})">Sil</button>
+                </div>
+            </div>
+        `;
+    });
+    list.innerHTML = html;
+}
+
+function openSavedComparison(type, idsStr) {
+    const ids = idsStr.split(',').map(Number);
+    clearCompare();
+    ids.forEach(id => toggleCompare(type, id));
+    openCompareModal();
+}
+
+async function deleteSavedComparison(id) {
+    if (!confirm('Bu karşılaştırmayı silmek istediğinize emin misiniz?')) return;
+    try {
+        const res = await fetch(`${API_URL}/comparisons/${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+            showToast('Karşılaştırma silindi', 'success');
+            loadSavedComparisons();
+        }
+    } catch(err) {
+        console.error(err);
+    }
+}

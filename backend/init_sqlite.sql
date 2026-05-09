@@ -110,6 +110,14 @@ CREATE TABLE Coupons (
     IsActive INTEGER DEFAULT 1
 );
 
+CREATE TABLE SavedComparisons (
+    ComparisonID INTEGER PRIMARY KEY AUTOINCREMENT,
+    UserID INTEGER REFERENCES Users(UserID),
+    EntityType TEXT NOT NULL,
+    EntityIDs TEXT NOT NULL,
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Seed Data (Örnek Veriler)
 INSERT INTO Coupons (Code, DiscountType, DiscountValue) VALUES 
 ('KTU10', 'Percent', 10),

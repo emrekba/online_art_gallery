@@ -1,0 +1,21 @@
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Python Virtual Environment
+venv/
+env/
+.env
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Node.js (Eğer ilerde kullanılırsa)
+node_modules/
