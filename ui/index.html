@@ -607,9 +607,20 @@
         </div>
     </div>
 
+    <!-- ADMIN REPLY MODAL (Madde 14) -->
+    <div class="modal-overlay" id="admin-reply-modal" role="dialog" aria-modal="true">
+        <div class="modal-box" style="max-width: 500px;">
+            <button class="modal-close" aria-label="Kapat" onclick="closeModal('admin-reply-modal')">✕</button>
+            <h3 style="margin-bottom:16px; font-family:var(--font-display);">🛡️ Yönetici Yanıtı</h3>
+            <p style="color:var(--text2); font-size:.9rem; margin-bottom:16px;">Seçilen yoruma yönetici olarak yanıt yazın:</p>
+            <textarea id="admin-reply-content" rows="4" placeholder="Yanıtınızı yazın..." style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text1);font-size:.9rem;resize:vertical;margin-bottom:16px"></textarea>
+            <button class="btn-primary btn-full" onclick="submitAdminReply()">Yanıtı Gönder</button>
+        </div>
+    </div>
+
     <!-- TOAST -->
     <div class="toast-container" id="toast-container"></div>
 
-    <script src="app.js?v=12"></script>
+    <script src="app.js?v=14"></script>
 </body>
 </html>

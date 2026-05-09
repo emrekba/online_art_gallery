@@ -21,7 +21,7 @@ async function fetchInitialData() {
     const rawArtworks = await artworksRes.json();
     artworks = rawArtworks.map(a => ({
       id: a.ArtworkID, artistId: a.ArtistID, title: a.Title, category: a.Category,
-      price: a.Price, status: a.StockStatus, rating: 4.8, reviews: 24, likes: 142,
+      price: a.Price, status: a.StockStatus, rating: a.AvgRating ? Math.round(a.AvgRating * 10) / 10 : 0, reviews: a.ReviewCount || 0, likes: 142,
       viewCount: a.ViewCount || 0, gradient: a.ImageURL
     }));
     
@@ -36,7 +36,7 @@ async function fetchInitialData() {
         id: e.EventID, title: e.Title, description: e.Description, date: e.EventDate,
         day: d.getDate().toString().padStart(2, '0'), month: months[d.getMonth()],
         baseCapacity: e.Capacity, capacity: e.Capacity * 21, registered: e.RegisteredCount || 0, price: e.Price,
-        type: type, gradient: colors[e.EventID % 3], rating: 4.7, reservations: e.RegisteredCount || 0
+        type: type, gradient: colors[e.EventID % 3], rating: e.AvgRating ? Math.round(e.AvgRating * 10) / 10 : 0, reservations: e.RegisteredCount || 0, reviews: e.ReviewCount || 0
       };
     });
     
@@ -293,11 +293,70 @@ async function incrementArtworkView(id) {
   }
 }
 
-async function loadArtworkComments(artworkId) {
+// ===== SHARED COMMENT CARD (Madde 13 + 14) =====
+let currentCommentSort = 'newest'; // newest | highest | helpful
+
+function renderCommentCard(c, entityType, entityId, verifiedLabel) {
+  const stars = c.Rating ? ('★'.repeat(c.Rating) + '☆'.repeat(5 - c.Rating)) : '';
+  const dateStr = c.CreatedAt ? c.CreatedAt.split(' ')[0] : '';
+  const initials = (c.UserName || '?').split(' ').map(s => s[0]).slice(0,2).join('').toUpperCase();
+
+  const helpfulActive = c.UserVote === 1 ? 'color:#4ade80;font-weight:700' : 'color:var(--text3)';
+  const unhelpfulActive = c.UserVote === 0 ? 'color:#ef4444;font-weight:700' : 'color:var(--text3)';
+  const isAdmin = state.loggedIn && state.user && state.user.role === 'Admin';
+
+  let repliesHtml = '';
+  if (c.Replies && c.Replies.length > 0) {
+    repliesHtml = c.Replies.map(r => {
+      const rDate = r.CreatedAt ? r.CreatedAt.split(' ')[0] : '';
+      return `
+        <div style="margin-top:10px;margin-left:20px;padding:10px 14px;background:rgba(168,85,247,.08);border-left:3px solid var(--accent);border-radius:0 8px 8px 0">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+            <span style="font-weight:600;font-size:.85rem">🛡️ ${escapeHtml(r.UserName)}</span>
+            <span style="font-size:.65rem;background:rgba(168,85,247,.2);color:var(--accent);padding:1px 5px;border-radius:3px">Yönetici</span>
+            <span style="font-size:.7rem;color:var(--text3);margin-left:auto">${rDate}</span>
+          </div>
+          <p style="margin:0;color:var(--text2);font-size:.85rem;line-height:1.4">${escapeHtml(r.Content)}</p>
+        </div>`;
+    }).join('');
+  }
+
+  let replyBtn = '';
+  if (isAdmin) {
+    replyBtn = `<button onclick="openAdminReplyModal(${c.CommentID}, '${entityType}', ${entityId})" style="background:none;border:none;color:var(--accent);font-size:.78rem;cursor:pointer;padding:2px 6px">↩️ Yanıtla</button>`;
+  }
+
+  return `
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px" id="comment-card-${c.CommentID}">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#ec4899);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:600">${initials}</div>
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:.9rem">
+            ${c.UserName}
+            ${c.Verified ? `<span style="margin-left:6px;font-size:.7rem;background:rgba(34,197,94,.2);color:#4ade80;padding:2px 6px;border-radius:4px">✓ ${verifiedLabel}</span>` : ''}
+          </div>
+          <div style="font-size:.75rem;color:var(--text3)">${dateStr}</div>
+        </div>
+        ${c.Rating ? `<div style="color:var(--gold);font-size:.85rem">${stars}</div>` : ''}
+      </div>
+      <p style="margin:0 0 8px 0;color:var(--text2);font-size:.9rem;line-height:1.5">${escapeHtml(c.Content)}</p>
+      <div style="display:flex;align-items:center;gap:12px;font-size:.8rem">
+        <button onclick="voteComment(${c.CommentID}, 1, '${entityType}', ${entityId})" style="background:none;border:none;cursor:pointer;${helpfulActive};display:flex;align-items:center;gap:3px;padding:2px 6px;border-radius:4px;transition:all .2s">👍 <span id="helpful-${c.CommentID}">${c.HelpfulCount || 0}</span></button>
+        <button onclick="voteComment(${c.CommentID}, 0, '${entityType}', ${entityId})" style="background:none;border:none;cursor:pointer;${unhelpfulActive};display:flex;align-items:center;gap:3px;padding:2px 6px;border-radius:4px;transition:all .2s">👎 <span id="unhelpful-${c.CommentID}">${c.UnhelpfulCount || 0}</span></button>
+        ${replyBtn}
+      </div>
+      ${repliesHtml}
+    </div>
+  `;
+}
+
+async function loadArtworkComments(artworkId, sort) {
   const section = document.getElementById('artwork-comments-section');
   if (!section) return;
+  const sortParam = sort || currentCommentSort;
   try {
-    const res = await fetch(`${API_URL}/comments/artwork/${artworkId}`);
+    const userParam = state.loggedIn && state.user ? `&user_id=${state.user.id}` : '';
+    const res = await fetch(`${API_URL}/comments/artwork/${artworkId}?sort=${sortParam}${userParam}`);
     const data = await res.json();
     if (!data.success) throw new Error('fetch failed');
 
@@ -314,7 +373,14 @@ async function loadArtworkComments(artworkId) {
           <h3 style="margin:0 0 4px 0;font-family:var(--font-display);font-size:1.3rem">💬 Yorumlar (${data.count})</h3>
           <div style="color:var(--gold);font-size:1rem">${avgStars} <span style="color:var(--text2);font-size:.9rem">${data.average || '—'}/5.0</span></div>
         </div>
-        <button class="btn-outline" onclick="openCommentModal(${artworkId})" style="padding:8px 14px;font-size:.85rem">✍️ Yorum Yap</button>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select onchange="currentCommentSort=this.value; loadArtworkComments(${artworkId}, this.value)" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text1);font-size:.8rem;cursor:pointer">
+            <option value="newest" ${sortParam==='newest'?'selected':''}>En Yeni</option>
+            <option value="highest" ${sortParam==='highest'?'selected':''}>En Yüksek Puan</option>
+            <option value="helpful" ${sortParam==='helpful'?'selected':''}>En Faydalı</option>
+          </select>
+          <button class="btn-outline" onclick="openCommentModal(${artworkId})" style="padding:8px 14px;font-size:.85rem">✍️ Yorum Yap</button>
+        </div>
       </div>
     `;
 
@@ -324,27 +390,7 @@ async function loadArtworkComments(artworkId) {
         Henüz yorum yok. Eseri satın aldıysanız ilk yorumu siz yapın!
       </p>`;
     } else {
-      listHtml = data.comments.map(c => {
-        const stars = c.Rating ? ('★'.repeat(c.Rating) + '☆'.repeat(5 - c.Rating)) : '';
-        const dateStr = c.CreatedAt ? c.CreatedAt.split(' ')[0] : '';
-        const initials = (c.UserName || '?').split(' ').map(s => s[0]).slice(0,2).join('').toUpperCase();
-        return `
-          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-              <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#ec4899);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:600">${initials}</div>
-              <div style="flex:1">
-                <div style="font-weight:600;font-size:.9rem">
-                  ${c.UserName}
-                  ${c.Verified ? '<span style="margin-left:6px;font-size:.7rem;background:rgba(34,197,94,.2);color:#4ade80;padding:2px 6px;border-radius:4px">✓ Doğrulanmış Alıcı</span>' : ''}
-                </div>
-                <div style="font-size:.75rem;color:var(--text3)">${dateStr}</div>
-              </div>
-              ${c.Rating ? `<div style="color:var(--gold);font-size:.85rem">${stars}</div>` : ''}
-            </div>
-            <p style="margin:0;color:var(--text2);font-size:.9rem;line-height:1.5">${escapeHtml(c.Content)}</p>
-          </div>
-        `;
-      }).join('');
+      listHtml = data.comments.map(c => renderCommentCard(c, 'Artwork', artworkId, 'Doğrulanmış Alıcı')).join('');
     }
 
     section.innerHTML = headerHtml + listHtml;
@@ -429,6 +475,69 @@ async function submitComment() {
   }
 }
 
+// ===== COMMENT VOTING (Madde 13) =====
+async function voteComment(commentId, isHelpful, entityType, entityId) {
+  if (!state.loggedIn) { showToast('Oy vermek için giriş yapın.', 'error'); return; }
+  try {
+    const res = await fetch(`${API_URL}/comments/${commentId}/vote`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ user_id: state.user.id, is_helpful: isHelpful })
+    });
+    const data = await res.json();
+    if (data.success) {
+      // Refresh the comment list to reflect updated votes
+      if (entityType === 'Artwork') loadArtworkComments(entityId);
+      if (entityType === 'Event') loadEventComments(entityId);
+    } else {
+      showToast(data.message || 'Oy verilemedi.', 'error');
+    }
+  } catch (err) {
+    showToast('Sunucu hatası.', 'error');
+  }
+}
+
+// ===== ADMIN REPLY (Madde 14) =====
+let adminReplyTarget = null;
+
+function openAdminReplyModal(commentId, entityType, entityId) {
+  adminReplyTarget = { commentId, entityType, entityId };
+  const modal = document.getElementById('admin-reply-modal');
+  if (!modal) return;
+  document.getElementById('admin-reply-content').value = '';
+  modal.classList.add('open');
+}
+
+async function submitAdminReply() {
+  if (!adminReplyTarget) return;
+  const content = document.getElementById('admin-reply-content').value.trim();
+  if (!content) { showToast('Yanıt boş olamaz.', 'error'); return; }
+  try {
+    const res = await fetch(`${API_URL}/comments`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        user_id: state.user.id,
+        entity_type: adminReplyTarget.entityType,
+        entity_id: adminReplyTarget.entityId,
+        content,
+        parent_comment_id: adminReplyTarget.commentId
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Yanıtınız eklendi ✓', 'success');
+      closeModal('admin-reply-modal');
+      if (adminReplyTarget.entityType === 'Artwork') loadArtworkComments(adminReplyTarget.entityId);
+      if (adminReplyTarget.entityType === 'Event') loadEventComments(adminReplyTarget.entityId);
+    } else {
+      showToast(data.message || 'Yanıt eklenemedi.', 'error');
+    }
+  } catch (err) {
+    showToast('Sunucu hatası.', 'error');
+  }
+}
+
 let currentOpenEventId = null;
 
 async function openEvent(id) {
@@ -491,11 +600,13 @@ async function openEvent(id) {
   loadEventComments(id);
 }
 
-async function loadEventComments(eventId) {
+async function loadEventComments(eventId, sort) {
   const section = document.getElementById('event-comments-section');
   if (!section) return;
+  const sortParam = sort || currentCommentSort;
   try {
-    const res = await fetch(`${API_URL}/comments/event/${eventId}`);
+    const userParam = state.loggedIn && state.user ? `&user_id=${state.user.id}` : '';
+    const res = await fetch(`${API_URL}/comments/event/${eventId}?sort=${sortParam}${userParam}`);
     const data = await res.json();
     if (!data.success) throw new Error('fetch failed');
 
@@ -511,7 +622,14 @@ async function loadEventComments(eventId) {
           <h3 style="margin:0 0 4px 0;font-family:var(--font-display);font-size:1.3rem">💬 Katılımcı Yorumları (${data.count})</h3>
           <div style="color:var(--gold);font-size:1rem">${avgStars} <span style="color:var(--text2);font-size:.9rem">${data.average || '—'}/5.0</span></div>
         </div>
-        <button class="btn-outline" onclick="openEventCommentModal(${eventId})" style="padding:8px 14px;font-size:.85rem">✍️ Yorum Yap</button>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <select onchange="currentCommentSort=this.value; loadEventComments(${eventId}, this.value)" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text1);font-size:.8rem;cursor:pointer">
+            <option value="newest" ${sortParam==='newest'?'selected':''}>En Yeni</option>
+            <option value="highest" ${sortParam==='highest'?'selected':''}>En Yüksek Puan</option>
+            <option value="helpful" ${sortParam==='helpful'?'selected':''}>En Faydalı</option>
+          </select>
+          <button class="btn-outline" onclick="openEventCommentModal(${eventId})" style="padding:8px 14px;font-size:.85rem">✍️ Yorum Yap</button>
+        </div>
       </div>
     `;
 
@@ -521,27 +639,7 @@ async function loadEventComments(eventId) {
         Henüz yorum yok. Etkinliğe katıldıysanız ilk yorumu siz yapın!
       </p>`;
     } else {
-      listHtml = data.comments.map(c => {
-        const stars = c.Rating ? ('★'.repeat(c.Rating) + '☆'.repeat(5 - c.Rating)) : '';
-        const dateStr = c.CreatedAt ? c.CreatedAt.split(' ')[0] : '';
-        const initials = (c.UserName || '?').split(' ').map(s => s[0]).slice(0,2).join('').toUpperCase();
-        return `
-          <div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-              <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#ec4899);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:600">${initials}</div>
-              <div style="flex:1">
-                <div style="font-weight:600;font-size:.9rem">
-                  ${c.UserName}
-                  ${c.Verified ? '<span style="margin-left:6px;font-size:.7rem;background:rgba(34,197,94,.2);color:#4ade80;padding:2px 6px;border-radius:4px">✓ Doğrulanmış Katılımcı</span>' : ''}
-                </div>
-                <div style="font-size:.75rem;color:var(--text3)">${dateStr}</div>
-              </div>
-              ${c.Rating ? `<div style="color:var(--gold);font-size:.85rem">${stars}</div>` : ''}
-            </div>
-            <p style="margin:0;color:var(--text2);font-size:.9rem;line-height:1.5">${escapeHtml(c.Content)}</p>
-          </div>
-        `;
-      }).join('');
+      listHtml = data.comments.map(c => renderCommentCard(c, 'Event', eventId, 'Doğrulanmış Katılımcı')).join('');
     }
 
     section.innerHTML = headerHtml + listHtml;

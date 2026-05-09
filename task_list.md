@@ -130,14 +130,14 @@
 - [x] Kullanıcıların katıldıkları etkinlikler hakkında değerlendirme yazabilmesi (Profil > Etkinlik Kayıtlarım > "Yorum Yap" + Etkinlik modalı)
 - [x] Diğer kullanıcı yorumlarını görüntüleyebilmesi (Eser & Etkinlik modallarında liste + ortalama puan + "Doğrulanmış Alıcı/Katılımcı" rozeti)
 
-### Madde 13 — Yorumları Değerlendirme ve Filtreleme ❌ Eksik
-- [ ] Yorumlara puan verme veya faydalı bulma oyu verme YOK
-- [ ] Yorumları en yeni, en yüksek puanlı veya en faydalı olacak şekilde filtreleme YOK
-- [ ] Ortalama puan bilgilerini görüntüleme YOK (sadece mock data'da var)
+### Madde 13 — Yorumları Değerlendirme ve Filtreleme ✅ Tamamlandı
+- [x] Yorumlara puan verme veya faydalı bulma oyu verme (👍/👎 toggle butonları + CommentVotes tablosu)
+- [x] Yorumları en yeni, en yüksek puanlı veya en faydalı olacak şekilde filtreleme (Sort dropdown: En Yeni / En Yüksek Puan / En Faydalı)
+- [x] Ortalama puan bilgilerini görüntüleme (Gerçek veritabanı hesaplaması — yorum sayısı ve yıldız ortalaması)
 
-### Madde 14 — Yorumlara Yanıt Verme ❌ Eksik
-- [ ] Galeri yöneticisinin veya etkinlik sorumlusunun yorumlara yanıt verebilmesi YOK
-- [ ] Kullanıcıların bu yanıtları görüntüleyebilmesi YOK
+### Madde 14 — Yorumlara Yanıt Verme ✅ Tamamlandı
+- [x] Galeri yöneticisinin yorumlara yanıt verebilmesi (Admin rolü kontrolü + ParentCommentID ile iç içe yapı)
+- [x] Kullanıcıların bu yanıtları görüntüleyebilmesi (Mor border-left ile ayrılmış “Yönetici” rozetli yanıt kartları)
 
 ### Madde 15 — Doğrulama ve Güvenilirlik ✅ Tamamlandı
 - [x] Yorumların yalnızca giriş yapmış kullanıcılar tarafından yapılabilmesi (UI + backend kontrol)
@@ -228,11 +228,11 @@
 | 10 | Müşteri Destek | ✅ Tamamlandı | 6/6 |
 | 11 | Karşılaştırma | ✅ Tamamlandı | 6/6 |
 | 12 | Yorum Ekleme | ✅ Tamamlandı | 6/6 |
-| 13 | Yorumları Değerlendirme | ⏳ Yapılacak | 0/6 |
-| 14 | Yorumlara Yanıt | ⏳ Yapılacak | 0/6 |
+| 13 | Yorumları Değerlendirme | ✅ Tamamlandı | 6/6 |
+| 14 | Yorumlara Yanıt | ✅ Tamamlandı | 6/6 |
 | 15 | Doğrulama ve Güvenilirlik | ✅ Tamamlandı | 6/6 |
 | 16 | İstatistik ve Raporlama | ✅ Tamamlandı | 6/6 |
 | — | Arayüz Kalitesi | ✅ İyi | 7/10 |
-| **TOPLAM** | | | **~85/106** |
+| **TOPLAM** | | | **~97/106** |
 
 > ⚠️ **Uyarı:** Proje gerçek veritabanı ile çalışacak şekilde yeniden yapılandırıldığı için bazı puanlar (Favori vb.) Backend tamamlanana kadar "Yapılacak" durumuna çekilmiştir.

@@ -57,7 +57,12 @@ def get_db_connection():
 @app.route('/api/artworks', methods=['GET'])
 def get_artworks():
     conn = get_db_connection()
-    artworks = conn.execute('SELECT * FROM Artworks').fetchall()
+    artworks = conn.execute('''
+        SELECT a.*,
+               COALESCE((SELECT AVG(c.Rating) FROM Comments c WHERE c.EntityType='Artwork' AND c.EntityID=a.ArtworkID AND c.Rating IS NOT NULL AND c.ParentCommentID IS NULL), 0) AS AvgRating,
+               COALESCE((SELECT COUNT(*) FROM Comments c WHERE c.EntityType='Artwork' AND c.EntityID=a.ArtworkID AND c.ParentCommentID IS NULL), 0) AS ReviewCount
+        FROM Artworks a
+    ''').fetchall()
     conn.close()
     return jsonify([dict(ix) for ix in artworks])
 
@@ -87,7 +92,9 @@ def get_events():
     conn = get_db_connection()
     events = conn.execute('''
         SELECT e.*, 
-               COALESCE((SELECT SUM(ParticipantCount) FROM Reservations r WHERE r.EventID = e.EventID AND r.Status = 'Active'), 0) as RegisteredCount
+               COALESCE((SELECT SUM(ParticipantCount) FROM Reservations r WHERE r.EventID = e.EventID AND r.Status = 'Active'), 0) as RegisteredCount,
+               COALESCE((SELECT AVG(c.Rating) FROM Comments c WHERE c.EntityType='Event' AND c.EntityID=e.EventID AND c.Rating IS NOT NULL AND c.ParentCommentID IS NULL), 0) AS AvgRating,
+               COALESCE((SELECT COUNT(*) FROM Comments c WHERE c.EntityType='Event' AND c.EntityID=e.EventID AND c.ParentCommentID IS NULL), 0) AS ReviewCount
         FROM Events e
     ''').fetchall()
     conn.close()
@@ -457,7 +464,7 @@ def delete_comparison(comparison_id):
     return jsonify({'success': True})
 
 
-# ===== COMMENTS / REVIEWS (Madde 12, 15) =====
+# ===== COMMENTS / REVIEWS (Madde 12, 13, 14, 15) =====
 
 def _user_purchased_artwork(conn, user_id, artwork_id):
     """Kullanıcı bu eseri satın almış mı? (Tamamlanmış sipariş şartı)"""
@@ -481,95 +488,143 @@ def _user_attended_event(conn, user_id, event_id):
     return row is not None
 
 
-@app.route('/api/comments/event/<int:event_id>', methods=['GET'])
-def get_event_comments(event_id):
-    """Belirtilen etkinliğe ait tüm yorumları döner.
+def _build_comments_query(entity_type, entity_id, conn, sort='newest', current_user_id=None):
+    """Yorumları sıralama seçeneğiyle birlikte getirir (Madde 13 filtre)."""
 
-    `Verified` bayrağı, yorum sahibinin o etkinliğe Aktif rezervasyon yapmış
-    bir katılımcı olup olmadığını gösterir.
-    """
-    conn = get_db_connection()
-    rows = conn.execute('''
-        SELECT c.CommentID, c.UserID, c.Content, c.Rating, c.CreatedAt,
-               u.FullName AS UserName,
-               (SELECT 1 FROM Reservations r
+    order_clause = 'c.CreatedAt DESC'
+    if sort == 'highest':
+        order_clause = 'c.Rating DESC, c.CreatedAt DESC'
+    elif sort == 'helpful':
+        order_clause = 'HelpfulCount DESC, c.CreatedAt DESC'
+
+    if entity_type == 'Artwork':
+        verified_sub = """(SELECT 1 FROM Orders o
+                  JOIN OrderDetails od ON od.OrderID = o.OrderID
+                 WHERE o.UserID = c.UserID AND od.ArtworkID = c.EntityID
+                   AND o.Status = 'Completed' LIMIT 1)"""
+    else:
+        verified_sub = """(SELECT 1 FROM Reservations r
                  WHERE r.UserID = c.UserID AND r.EventID = c.EntityID
-                   AND r.Status = 'Active' LIMIT 1) AS Verified
+                   AND r.Status = 'Active' LIMIT 1)"""
+
+    user_vote_sub = '0'
+    params = [entity_type, entity_id]
+    if current_user_id:
+        user_vote_sub = "(SELECT IsHelpful FROM CommentVotes cv WHERE cv.CommentID = c.CommentID AND cv.UserID = ? LIMIT 1)"
+        params = [current_user_id, entity_type, entity_id]
+
+    sql = f'''
+        SELECT c.CommentID, c.UserID, c.Content, c.Rating, c.CreatedAt,
+               c.ParentCommentID,
+               u.FullName AS UserName,
+               {verified_sub} AS Verified,
+               COALESCE((SELECT SUM(CASE WHEN IsHelpful=1 THEN 1 ELSE 0 END) FROM CommentVotes WHERE CommentID=c.CommentID),0) AS HelpfulCount,
+               COALESCE((SELECT SUM(CASE WHEN IsHelpful=0 THEN 1 ELSE 0 END) FROM CommentVotes WHERE CommentID=c.CommentID),0) AS UnhelpfulCount,
+               {user_vote_sub} AS UserVote
         FROM Comments c
         JOIN Users u ON u.UserID = c.UserID
-        WHERE c.EntityType = 'Event' AND c.EntityID = ?
-        ORDER BY c.CreatedAt DESC
-    ''', (event_id,)).fetchall()
+        WHERE c.EntityType = ? AND c.EntityID = ? AND c.ParentCommentID IS NULL
+        ORDER BY {order_clause}
+    '''
+
+    rows = conn.execute(sql, params).fetchall()
+
+    # Fetch admin replies (ParentCommentID != NULL)
+    replies_sql = '''
+        SELECT c.CommentID, c.UserID, c.Content, c.CreatedAt, c.ParentCommentID,
+               u.FullName AS UserName, u.Role
+        FROM Comments c
+        JOIN Users u ON u.UserID = c.UserID
+        WHERE c.EntityType = ? AND c.EntityID = ? AND c.ParentCommentID IS NOT NULL
+        ORDER BY c.CreatedAt ASC
+    '''
+    reply_rows = conn.execute(replies_sql, [entity_type, entity_id]).fetchall()
+    replies_map = {}
+    for r in reply_rows:
+        pid = r['ParentCommentID']
+        if pid not in replies_map:
+            replies_map[pid] = []
+        replies_map[pid].append(dict(r))
+
+    comments = []
+    for r in rows:
+        d = dict(r)
+        d['Replies'] = replies_map.get(d['CommentID'], [])
+        comments.append(d)
 
     stats = conn.execute('''
         SELECT COUNT(*) AS cnt,
                COALESCE(AVG(Rating), 0) AS avg_rating
         FROM Comments
-        WHERE EntityType = 'Event' AND EntityID = ? AND Rating IS NOT NULL
-    ''', (event_id,)).fetchone()
-    conn.close()
+        WHERE EntityType = ? AND EntityID = ? AND Rating IS NOT NULL AND ParentCommentID IS NULL
+    ''', (entity_type, entity_id)).fetchone()
 
+    return comments, stats
+
+
+@app.route('/api/comments/event/<int:event_id>', methods=['GET'])
+def get_event_comments(event_id):
+    """Belirtilen etkinliğe ait tüm yorumları döner."""
+    sort = request.args.get('sort', 'newest')
+    current_user_id = request.args.get('user_id', type=int)
+    conn = get_db_connection()
+    comments, stats = _build_comments_query('Event', event_id, conn, sort, current_user_id)
+    conn.close()
     return jsonify({
         'success': True,
         'count': stats['cnt'] or 0,
         'average': round(stats['avg_rating'] or 0, 1),
-        'comments': [dict(r) for r in rows]
+        'comments': comments
     })
 
 
 @app.route('/api/comments/artwork/<int:artwork_id>', methods=['GET'])
 def get_artwork_comments(artwork_id):
-    """Belirtilen esere ait tüm yorumları döner (kullanıcı adlarıyla birlikte).
-
-    Ayrıca ortalama puanı, yorum sayısını ve yorum sahibinin doğrulanmış
-    (satın almış) bir alıcı olup olmadığını da içerir.
-    """
+    """Belirtilen esere ait tüm yorumları döner."""
+    sort = request.args.get('sort', 'newest')
+    current_user_id = request.args.get('user_id', type=int)
     conn = get_db_connection()
-    rows = conn.execute('''
-        SELECT c.CommentID, c.UserID, c.Content, c.Rating, c.CreatedAt,
-               u.FullName AS UserName,
-               (SELECT 1 FROM Orders o
-                  JOIN OrderDetails od ON od.OrderID = o.OrderID
-                 WHERE o.UserID = c.UserID AND od.ArtworkID = c.EntityID
-                   AND o.Status = 'Completed' LIMIT 1) AS Verified
-        FROM Comments c
-        JOIN Users u ON u.UserID = c.UserID
-        WHERE c.EntityType = 'Artwork' AND c.EntityID = ?
-        ORDER BY c.CreatedAt DESC
-    ''', (artwork_id,)).fetchall()
-
-    stats = conn.execute('''
-        SELECT COUNT(*) AS cnt,
-               COALESCE(AVG(Rating), 0) AS avg_rating
-        FROM Comments
-        WHERE EntityType = 'Artwork' AND EntityID = ? AND Rating IS NOT NULL
-    ''', (artwork_id,)).fetchone()
+    comments, stats = _build_comments_query('Artwork', artwork_id, conn, sort, current_user_id)
     conn.close()
-
     return jsonify({
         'success': True,
         'count': stats['cnt'] or 0,
         'average': round(stats['avg_rating'] or 0, 1),
-        'comments': [dict(r) for r in rows]
+        'comments': comments
     })
 
 
 @app.route('/api/comments', methods=['POST'])
 def create_comment():
-    """Yeni yorum oluştur. Eserler için yalnızca satın alan kullanıcılar yorum yazabilir.
-
-    Beklenen body: { user_id, entity_type ('Artwork'|'Event'), entity_id, content, rating }
-    """
+    """Yeni yorum veya admin yanıtı oluştur."""
     data = request.json or {}
     user_id = data.get('user_id')
     entity_type = data.get('entity_type', 'Artwork')
     entity_id = data.get('entity_id')
     content = (data.get('content') or '').strip()
     rating = data.get('rating')
+    parent_comment_id = data.get('parent_comment_id')  # Madde 14 — yanıt
 
     if not user_id or not entity_id or not content:
         return jsonify({'success': False, 'message': 'Eksik alanlar var.'}), 400
 
+    conn = get_db_connection()
+
+    # Admin yanıtı mı?
+    if parent_comment_id:
+        user = conn.execute('SELECT Role FROM Users WHERE UserID = ?', (user_id,)).fetchone()
+        if not user or user['Role'] != 'Admin':
+            conn.close()
+            return jsonify({'success': False, 'message': 'Yalnızca yöneticiler yanıt verebilir.'}), 403
+        conn.execute('''
+            INSERT INTO Comments (UserID, EntityType, EntityID, Content, Rating, ParentCommentID)
+            VALUES (?, ?, ?, ?, NULL, ?)
+        ''', (user_id, entity_type, entity_id, content, parent_comment_id))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Yanıtınız eklendi.'})
+
+    # Normal yorum — puan kontrolü
     if rating is not None:
         try:
             rating = int(rating)
@@ -577,8 +632,6 @@ def create_comment():
                 return jsonify({'success': False, 'message': 'Puan 1-5 arasında olmalı.'}), 400
         except (TypeError, ValueError):
             return jsonify({'success': False, 'message': 'Geçersiz puan değeri.'}), 400
-
-    conn = get_db_connection()
 
     # Doğrulama (Madde 15)
     if entity_type == 'Artwork':
@@ -608,6 +661,61 @@ def create_comment():
     return jsonify({'success': True, 'message': 'Yorumunuz eklendi.'})
 
 
+# ===== COMMENT VOTES (Madde 13) =====
+
+@app.route('/api/comments/<int:comment_id>/vote', methods=['POST'])
+def vote_comment(comment_id):
+    """Yoruma faydalı/faydasız oyu ver. Toggle mantığıyla çalışır."""
+    data = request.json or {}
+    user_id = data.get('user_id')
+    is_helpful = data.get('is_helpful')  # 1 veya 0
+
+    if not user_id or is_helpful is None:
+        return jsonify({'success': False, 'message': 'Eksik parametre.'}), 400
+
+    conn = get_db_connection()
+    existing = conn.execute(
+        'SELECT VoteID, IsHelpful FROM CommentVotes WHERE CommentID = ? AND UserID = ?',
+        (comment_id, user_id)
+    ).fetchone()
+
+    if existing:
+        if existing['IsHelpful'] == is_helpful:
+            # Aynı oya tekrar basıldı → oyu kaldır
+            conn.execute('DELETE FROM CommentVotes WHERE VoteID = ?', (existing['VoteID'],))
+        else:
+            # Farklı oy → güncelle
+            conn.execute('UPDATE CommentVotes SET IsHelpful = ? WHERE VoteID = ?', (is_helpful, existing['VoteID']))
+    else:
+        conn.execute(
+            'INSERT INTO CommentVotes (CommentID, UserID, IsHelpful) VALUES (?, ?, ?)',
+            (comment_id, user_id, is_helpful)
+        )
+
+    conn.commit()
+
+    # Güncel sayıları döndür
+    counts = conn.execute('''
+        SELECT
+            COALESCE(SUM(CASE WHEN IsHelpful=1 THEN 1 ELSE 0 END),0) AS helpful,
+            COALESCE(SUM(CASE WHEN IsHelpful=0 THEN 1 ELSE 0 END),0) AS unhelpful
+        FROM CommentVotes WHERE CommentID = ?
+    ''', (comment_id,)).fetchone()
+
+    user_vote = conn.execute(
+        'SELECT IsHelpful FROM CommentVotes WHERE CommentID = ? AND UserID = ?',
+        (comment_id, user_id)
+    ).fetchone()
+    conn.close()
+
+    return jsonify({
+        'success': True,
+        'helpful': counts['helpful'],
+        'unhelpful': counts['unhelpful'],
+        'user_vote': user_vote['IsHelpful'] if user_vote else None
+    })
+
+
 @app.route('/api/user/<int:user_id>/attended-events', methods=['GET'])
 def get_user_attended_events(user_id):
     """Kullanıcının yorum yapabileceği etkinliklerin listesi (Aktif rezervasyon)."""
@@ -625,11 +733,7 @@ def get_user_attended_events(user_id):
 
 @app.route('/api/user/<int:user_id>/purchased-artworks', methods=['GET'])
 def get_user_purchased_artworks(user_id):
-    """Kullanıcının satın aldığı (yorum yapabileceği) eserlerin listesi.
-
-    Aynı esere birden fazla yorum yazabilirler, ancak bu uç nokta yalnızca
-    satın alma yapılmış benzersiz eserleri döner.
-    """
+    """Kullanıcının satın aldığı (yorum yapabileceği) eserlerin listesi."""
     conn = get_db_connection()
     rows = conn.execute('''
         SELECT DISTINCT a.ArtworkID, a.Title, a.Category, a.ImageURL, a.Price
