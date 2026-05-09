@@ -192,9 +192,9 @@
 - [ ] **Faydalı Bulma + Yanıt** — Madde 13, 14 (CommentVotes & ParentCommentID)
 
 ### Öncelik 3 — Ekstra Özellikler
-- [ ] **İndirim/Kupon Sistemi** — ödeme ekranında (Madde 9)
-- [ ] **Karşılaştırma Aracı** — eser/etkinlik kıyaslama (Madde 11)
-- [ ] **Destek Formu** — profil üzerinden iletişim (Madde 10)
+- [x] **İndirim/Kupon Sistemi** — ödeme ekranında (Madde 9)
+- [x] **Karşılaştırma Aracı** — eser/etkinlik kıyaslama + kaydetme (Madde 11)
+- [x] **Destek Formu** — profil üzerinden iletişim (Madde 10)
 
 ---
 
@@ -233,6 +233,6 @@
 | 15 | Doğrulama ve Güvenilirlik | ✅ Tamamlandı | 6/6 |
 | 16 | İstatistik ve Raporlama | ✅ Tamamlandı | 6/6 |
 | — | Arayüz Kalitesi | ✅ İyi | 7/10 |
-| **TOPLAM** | | | **~43/106** |
+| **TOPLAM** | | | **~85/106** |
 
 > ⚠️ **Uyarı:** Proje gerçek veritabanı ile çalışacak şekilde yeniden yapılandırıldığı için bazı puanlar (Favori vb.) Backend tamamlanana kadar "Yapılacak" durumuna çekilmiştir.
