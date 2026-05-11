@@ -22,7 +22,7 @@ async function fetchInitialData() {
     artworks = rawArtworks.map(a => ({
       id: a.ArtworkID, artistId: a.ArtistID, title: a.Title, category: a.Category,
       price: a.Price, status: a.StockStatus, rating: a.AvgRating ? Math.round(a.AvgRating * 10) / 10 : 0, reviews: a.ReviewCount || 0, likes: 142,
-      viewCount: a.ViewCount || 0, gradient: a.ImageURL
+      viewCount: a.ViewCount || 0, gradient: a.ImageURL, sellerName: a.SellerName
     }));
     
     const rawEvents = await eventsRes.json();
@@ -36,7 +36,7 @@ async function fetchInitialData() {
         id: e.EventID, title: e.Title, description: e.Description, date: e.EventDate,
         day: d.getDate().toString().padStart(2, '0'), month: months[d.getMonth()],
         baseCapacity: e.Capacity, capacity: e.Capacity * 21, registered: e.RegisteredCount || 0, price: e.Price,
-        type: type, gradient: colors[e.EventID % 3], rating: e.AvgRating ? Math.round(e.AvgRating * 10) / 10 : 0, reservations: e.RegisteredCount || 0, reviews: e.ReviewCount || 0
+        type: type, gradient: colors[e.EventID % 3], rating: e.AvgRating ? Math.round(e.AvgRating * 10) / 10 : 0, reservations: e.RegisteredCount || 0, reviews: e.ReviewCount || 0, sellerName: e.SellerName
       };
     });
     
@@ -70,6 +70,7 @@ function navigate(page) {
   if (page === 'events') renderEvents();
   if (page === 'admin') animateKPIs();
   if (page === 'profile') loadProfile();
+  if (page === 'seller') loadSellerDashboard();
 }
 
 // ===== RENDER HOME =====
@@ -104,7 +105,7 @@ function artworkCard(a) {
     <div class="card-body">
       <span class="card-cat">${a.category}</span>
       <h3>${a.title}</h3>
-      <p class="card-artist">${artist ? artist.name : ''}</p>
+      <p class="card-artist">${artist ? artist.name : (a.sellerName || '')}</p>
     </div>
     <div class="card-footer">
       <span class="card-price">₺${a.price.toLocaleString('tr-TR')}</span>
@@ -131,7 +132,8 @@ function eventCard(e) {
     </div>
     <div class="event-body">
       <h3>${e.title}</h3>
-      <p>${e.description}</p>
+      <p style="margin-bottom: 8px;">${e.description}</p>
+      <p style="font-size: 0.8rem; color: var(--accent); margin-bottom: 8px;">${e.sellerName || ''}</p>
       <div class="event-meta">
         <span>👥 ${e.registered}/${e.capacity} (3 gün × 7 saat)</span>
         <span>★ ${e.rating}</span>
@@ -987,6 +989,7 @@ async function doLogin() {
           document.getElementById('btn-login').textContent = state.user.name;
           document.getElementById('btn-register').textContent = 'Çıkış';
           document.getElementById('nav-item-profile').style.display = 'inline-block';
+          document.getElementById('nav-item-seller').style.display = state.user.role === 'Seller' ? 'inline-block' : 'none';
           document.getElementById('nav-item-admin').style.display = state.user.role === 'Admin' ? 'inline-block' : 'none';
           closeModal('login-modal');
           showToast(`Hoş geldiniz, ${state.user.name}! ✓`, 'success');
@@ -1004,13 +1007,16 @@ async function doSignup() {
   const name = document.getElementById('signup-name').value;
   const email = document.getElementById('signup-email').value;
   const pass = document.getElementById('signup-password').value;
+  const isSeller = document.getElementById('signup-is-seller').checked;
+  const role = isSeller ? 'Seller' : 'Customer';
+
   if (!name || !email || !pass) { showToast('Lütfen tüm alanları doldurun', 'error'); return; }
   
   try {
       const res = await fetch(`${API_URL}/register`, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({name, email, password: pass})
+          body: JSON.stringify({name, email, password: pass, role})
       });
       const data = await res.json();
       
@@ -1021,6 +1027,8 @@ async function doSignup() {
           document.getElementById('btn-login').textContent = data.user.name;
           document.getElementById('btn-register').textContent = 'Çıkış';
           document.getElementById('nav-item-profile').style.display = 'inline-block';
+          document.getElementById('nav-item-seller').style.display = state.user.role === 'Seller' ? 'inline-block' : 'none';
+          document.getElementById('nav-item-admin').style.display = state.user.role === 'Admin' ? 'inline-block' : 'none';
           closeModal('login-modal');
           showToast(`Kayıt başarılı, hoş geldiniz ${data.user.name}! ✓`, 'success');
           loadFavorites();
@@ -1449,7 +1457,8 @@ function doLogout() {
     document.getElementById('btn-register').textContent = 'Kayıt Ol'; 
     document.getElementById('nav-item-profile').style.display = 'none';
     document.getElementById('nav-item-admin').style.display = 'none';
-    if(state.page === 'profile' || state.page === 'admin') navigate('home');
+    document.getElementById('nav-item-seller').style.display = 'none';
+    if(state.page === 'profile' || state.page === 'admin' || state.page === 'seller') navigate('home');
     renderArtworks(); renderHome();
     showToast('Çıkış yapıldı', 'error');
 }
@@ -1465,6 +1474,7 @@ document.addEventListener('DOMContentLoaded', () => {
           document.getElementById('btn-login').textContent = state.user.name;
           document.getElementById('btn-register').textContent = 'Çıkış';
           document.getElementById('nav-item-profile').style.display = 'inline-block';
+          document.getElementById('nav-item-seller').style.display = state.user.role === 'Seller' ? 'inline-block' : 'none';
           document.getElementById('nav-item-admin').style.display = state.user.role === 'Admin' ? 'inline-block' : 'none';
           loadFavorites();
           fetchSpecialOffer();
@@ -1655,18 +1665,25 @@ document.addEventListener('DOMContentLoaded', () => {
       }
   });
 
-  // Profile tabs
+  // Profile & Seller tabs
   document.querySelectorAll('.profile-tab').forEach(tab => {
       tab.addEventListener('click', (e) => {
-          document.querySelectorAll('.profile-tab').forEach(t => {
+          // Bulunduğu sayfanın (container) içindeki butonları hedefle
+          const container = e.target.closest('.profile-container');
+          container.querySelectorAll('.profile-tab').forEach(t => {
               t.classList.remove('active');
               t.style.background = 'transparent'; t.style.border = '1px solid var(--border)'; t.style.color = 'var(--text2)';
           });
           e.target.classList.add('active');
           e.target.style.background = 'var(--bg3)'; e.target.style.border = 'none'; e.target.style.color = 'var(--text1)';
           
-          document.querySelectorAll('.ptab-content').forEach(c => c.style.display = 'none');
-          document.getElementById('ptab-' + e.target.dataset.ptab).style.display = 'block';
+          if (e.target.dataset.ptab) {
+              container.querySelectorAll('.ptab-content').forEach(c => c.style.display = 'none');
+              document.getElementById('ptab-' + e.target.dataset.ptab).style.display = 'block';
+          } else if (e.target.dataset.stab) {
+              container.querySelectorAll('.stab-content').forEach(c => c.style.display = 'none');
+              document.getElementById('stab-' + e.target.dataset.stab).style.display = 'block';
+          }
       });
   });
 
@@ -1770,5 +1787,187 @@ async function deleteSavedComparison(id) {
         }
     } catch(err) {
         console.error(err);
+    }
+}
+
+// ===== SELLER DASHBOARD =====
+async function loadSellerDashboard() {
+    if (!state.loggedIn || state.user.role !== 'Seller') return;
+    try {
+        const [artworksRes, eventsRes] = await Promise.all([
+            fetch(`${API_URL}/seller/artworks/${state.user.id}`),
+            fetch(`${API_URL}/seller/events/${state.user.id}`)
+        ]);
+        const artworksData = await artworksRes.json();
+        const eventsData = await eventsRes.json();
+
+        if (artworksData.success) {
+            const addCardHtml = `
+                <div style="background:var(--bg3); padding:16px; border-radius:8px; border:2px dashed var(--border); display:flex; justify-content:center; align-items:center; cursor:pointer; min-height:80px; transition:0.2s;" onclick="document.getElementById('add-artwork-modal').classList.add('open')" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+                    <span style="color:var(--text2); font-weight:600;">+ Yeni Eser Ekle</span>
+                </div>
+            `;
+            const artHtml = artworksData.artworks.map(a => `
+                <div style="background:var(--bg3); padding:16px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+                    <div style="display:flex; gap:16px; align-items:center;">
+                        <div style="width:60px; height:60px; border-radius:8px; background:${a.ImageURL}"></div>
+                        <div>
+                            <h4 style="margin:0 0 4px 0">${a.Title}</h4>
+                            <span style="color:var(--text2); font-size:0.85rem;">Kategori: ${a.Category} | Eklendi: ${a.CreatedAt.split(' ')[0]}</span>
+                        </div>
+                    </div>
+                    <div style="text-align:right; display:flex; flex-direction:column; gap:8px;">
+                        <span style="font-weight:bold; color:var(--gold);">₺${a.Price.toLocaleString('tr-TR')}</span>
+                        <button class="btn-outline" style="padding:4px 8px; font-size:0.8rem;" onclick="openEditArtworkModal(${a.ArtworkID}, \`${a.Title.replace(/`/g, '')}\`, \`${a.Category}\`, ${a.Price}, \`${a.ImageURL}\`)">Düzenle</button>
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('seller-artworks-list').innerHTML = addCardHtml + artHtml;
+        }
+
+        if (eventsData.success) {
+            const addEventCardHtml = `
+                <div style="background:var(--bg3); padding:16px; border-radius:8px; border:2px dashed var(--border); display:flex; justify-content:center; align-items:center; cursor:pointer; min-height:80px; transition:0.2s;" onclick="document.getElementById('add-event-modal').classList.add('open')" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+                    <span style="color:var(--text2); font-weight:600;">+ Yeni Etkinlik Ekle</span>
+                </div>
+            `;
+            const evtHtml = eventsData.events.map(e => `
+                <div style="background:var(--bg3); padding:16px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <h4 style="margin:0 0 4px 0">${e.Title}</h4>
+                        <span style="color:var(--text2); font-size:0.85rem;">Tarih: ${e.EventDate} | Kapasite: ${e.Capacity} Kişi</span>
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="font-weight:bold; color:var(--gold);">₺${e.Price.toLocaleString('tr-TR')}</span>
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('seller-events-list').innerHTML = addEventCardHtml + evtHtml;
+        }
+
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function submitNewArtwork() {
+    const title = document.getElementById('add-art-title').value;
+    const category = document.getElementById('add-art-category').value;
+    const price = parseInt(document.getElementById('add-art-price').value);
+    const image_url = document.getElementById('add-art-image').value;
+
+    if (!title || !category || isNaN(price) || !image_url) {
+        showToast('Lütfen tüm alanları doldurun.', 'error');
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_URL}/seller/artworks`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                seller_id: state.user.id,
+                title, category, price, image_url
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('Eser başarıyla eklendi.', 'success');
+            document.getElementById('add-art-title').value = '';
+            document.getElementById('add-art-price').value = '';
+            closeModal('add-artwork-modal');
+            loadSellerDashboard();
+            fetchInitialData();
+        } else {
+            showToast(data.message || 'Hata oluştu.', 'error');
+        }
+    } catch (err) {
+        showToast('Sunucu hatası.', 'error');
+    }
+}
+
+async function submitNewEvent() {
+    const title = document.getElementById('add-evt-title').value;
+    const description = document.getElementById('add-evt-desc').value;
+    const event_date = document.getElementById('add-evt-date').value;
+    const capacity = parseInt(document.getElementById('add-evt-capacity').value);
+    const price = parseInt(document.getElementById('add-evt-price').value);
+
+    if (!title || !description || !event_date || isNaN(capacity) || isNaN(price)) {
+        showToast('Lütfen tüm alanları doldurun.', 'error');
+        return;
+    }
+
+    const formatted_date = event_date.replace('T', ' ') + ':00';
+
+    try {
+        const res = await fetch(`${API_URL}/seller/events`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                seller_id: state.user.id,
+                title, description, event_date: formatted_date, capacity, price
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('Etkinlik başarıyla eklendi.', 'success');
+            document.getElementById('add-evt-title').value = '';
+            document.getElementById('add-evt-desc').value = '';
+            document.getElementById('add-evt-date').value = '';
+            document.getElementById('add-evt-capacity').value = '';
+            document.getElementById('add-evt-price').value = '';
+            closeModal('add-event-modal');
+            loadSellerDashboard();
+            fetchInitialData();
+        } else {
+            showToast(data.message || 'Hata oluştu.', 'error');
+        }
+    } catch (err) {
+        showToast('Sunucu hatası.', 'error');
+    }
+}
+
+function openEditArtworkModal(id, title, category, price, image) {
+    document.getElementById('edit-art-id').value = id;
+    document.getElementById('edit-art-title').value = title;
+    document.getElementById('edit-art-category').value = category;
+    document.getElementById('edit-art-price').value = price;
+    document.getElementById('edit-art-image').value = image;
+    document.getElementById('edit-artwork-modal').classList.add('open');
+}
+
+async function submitEditArtwork() {
+    const id = document.getElementById('edit-art-id').value;
+    const title = document.getElementById('edit-art-title').value;
+    const category = document.getElementById('edit-art-category').value;
+    const price = parseInt(document.getElementById('edit-art-price').value);
+    const image_url = document.getElementById('edit-art-image').value;
+
+    if (!title || !category || isNaN(price) || !image_url) {
+        showToast('Lütfen tüm alanları doldurun.', 'error');
+        return;
+    }
+
+    try {
+        const res = await fetch(`${API_URL}/seller/artworks/${id}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                seller_id: state.user.id,
+                title, category, price, image_url
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('Eser başarıyla güncellendi.', 'success');
+            closeModal('edit-artwork-modal');
+            loadSellerDashboard();
+            fetchInitialData();
+        } else {
+            showToast(data.message || 'Hata oluştu.', 'error');
+        }
+    } catch (err) {
+        showToast('Sunucu hatası.', 'error');
     }
 }

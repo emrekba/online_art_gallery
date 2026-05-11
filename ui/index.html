@@ -25,6 +25,7 @@
                 <li><a href="#" class="nav-link" data-page="events" id="nav-events">Etkinlikler</a></li>
                 <li id="nav-item-profile" style="display:none;"><a href="#" class="nav-link" data-page="profile" id="nav-profile">Profilim</a></li>
                 <li id="nav-item-admin" style="display:none;"><a href="#" class="nav-link" data-page="admin" id="nav-admin">Dashboard</a></li>
+                <li id="nav-item-seller" style="display:none;"><a href="#" class="nav-link" data-page="seller" id="nav-seller">Satıcı Paneli</a></li>
             </ul>
             <div class="nav-actions">
                 <button class="btn-ghost" id="btn-login">Giriş Yap</button>
@@ -351,6 +352,38 @@
             </div>
         </section>
 
+        <!-- ========== SELLER DASHBOARD PAGE ========== -->
+        <section class="page" id="page-seller">
+            <div class="page-header page-header-dark">
+                <div class="page-header-content">
+                    <p class="section-tag">✦ Satıcı Paneli</p>
+                    <h1 class="page-title">Satıcı Paneli</h1>
+                    <p class="page-subtitle">Kendi eser ve etkinliklerinizi yönetin.</p>
+                </div>
+            </div>
+
+            <div class="profile-container" style="max-width:1200px; margin: 0 auto; padding: 20px; display: grid; grid-template-columns: 250px 1fr; gap: 30px;">
+                <div class="profile-sidebar" style="display:flex; flex-direction:column; gap:8px;">
+                    <button class="profile-tab active" data-stab="artworks" style="padding:12px; text-align:left; background:var(--bg3); border-radius:8px; border:none; color:var(--text1); cursor:pointer;">Eserlerim</button>
+                    <button class="profile-tab" data-stab="events" style="padding:12px; text-align:left; background:transparent; border-radius:8px; border:1px solid var(--border); color:var(--text2); cursor:pointer;">Etkinliklerim</button>
+                </div>
+                <div class="profile-content" style="background:var(--bg2); padding:30px; border-radius:16px; border:1px solid var(--border);">
+                    <div class="stab-content active" id="stab-artworks">
+                        <h3 style="margin-bottom:20px;">Eklediğim Eserler</h3>
+                        <div id="seller-artworks-list" style="display:flex; flex-direction:column; gap:12px;">
+                            <!-- JS ile doldurulacak -->
+                        </div>
+                    </div>
+                    <div class="stab-content" id="stab-events" style="display:none;">
+                        <h3 style="margin-bottom:20px;">Eklediğim Etkinlikler</h3>
+                        <div id="seller-events-list" style="display:flex; flex-direction:column; gap:12px;">
+                            <!-- JS ile doldurulacak -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- ========== PROFILE PAGE ========== -->
         <section class="page" id="page-profile">
             <div class="page-header">
@@ -490,6 +523,12 @@
                         <label for="signup-password">Şifre</label>
                         <input type="password" id="signup-password" placeholder="••••••••" class="form-input">
                     </div>
+                    <div class="form-group">
+                        <label style="display:flex; align-items:center; gap:8px;">
+                            <input type="checkbox" id="signup-is-seller">
+                            Satıcı Hesabı Olarak Kayıt Ol
+                        </label>
+                    </div>
                     <button class="btn-primary btn-full" id="submit-signup">Kayıt Ol</button>
                 </div>
             </div>
@@ -615,6 +654,99 @@
             <p style="color:var(--text2); font-size:.9rem; margin-bottom:16px;">Seçilen yoruma yönetici olarak yanıt yazın:</p>
             <textarea id="admin-reply-content" rows="4" placeholder="Yanıtınızı yazın..." style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text1);font-size:.9rem;resize:vertical;margin-bottom:16px"></textarea>
             <button class="btn-primary btn-full" onclick="submitAdminReply()">Yanıtı Gönder</button>
+        </div>
+    </div>
+
+    <!-- SELLER ADD ARTWORK MODAL -->
+    <div class="modal-overlay" id="add-artwork-modal" role="dialog" aria-modal="true">
+        <div class="modal-box" style="max-width: 500px;">
+            <button class="modal-close" aria-label="Kapat" onclick="closeModal('add-artwork-modal')">✕</button>
+            <h3 style="margin-bottom:20px; font-family:var(--font-display);">Yeni Eser Ekle</h3>
+            <div class="form-group">
+                <label>Eser Adı</label>
+                <input type="text" id="add-art-title" class="form-input">
+            </div>
+            <div class="form-group">
+                <label>Kategori</label>
+                <select id="add-art-category" class="form-input">
+                    <option value="Yağlı Boya">Yağlı Boya</option>
+                    <option value="Suluboya">Suluboya</option>
+                    <option value="Heykel">Heykel</option>
+                    <option value="Dijital">Dijital</option>
+                    <option value="Fotoğraf">Fotoğraf</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Fiyat (₺)</label>
+                <input type="number" id="add-art-price" class="form-input" min="0">
+            </div>
+            <div class="form-group">
+                <label>Görsel URL (veya CSS Gradient)</label>
+                <input type="text" id="add-art-image" class="form-input" placeholder="Örn: linear-gradient(135deg, #1a0533, #a855f7)" value="linear-gradient(135deg, #1a0533, #a855f7)">
+            </div>
+            <button class="btn-primary btn-full" onclick="submitNewArtwork()">Satışa Koy</button>
+        </div>
+    </div>
+
+    <!-- SELLER ADD EVENT MODAL -->
+    <div class="modal-overlay" id="add-event-modal" role="dialog" aria-modal="true">
+        <div class="modal-box" style="max-width: 500px;">
+            <button class="modal-close" aria-label="Kapat" onclick="closeModal('add-event-modal')">✕</button>
+            <h3 style="margin-bottom:20px; font-family:var(--font-display);">Yeni Etkinlik Ekle</h3>
+            <div class="form-group">
+                <label>Etkinlik Adı</label>
+                <input type="text" id="add-evt-title" class="form-input">
+            </div>
+            <div class="form-group">
+                <label>Açıklama</label>
+                <textarea id="add-evt-desc" class="form-input" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Tarih ve Saat</label>
+                <input type="datetime-local" id="add-evt-date" class="form-input">
+            </div>
+            <div class="form-group">
+                <label>Kapasite (Kişi)</label>
+                <input type="number" id="add-evt-capacity" class="form-input" min="1">
+            </div>
+            <div class="form-group">
+                <label>Kişi Başı Ücret (₺)</label>
+                <input type="number" id="add-evt-price" class="form-input" min="0">
+            </div>
+            <button class="btn-primary btn-full" onclick="submitNewEvent()">Satışa Koy</button>
+        </div>
+    </div>
+    </div>
+
+    <!-- SELLER EDIT ARTWORK MODAL -->
+    <div class="modal-overlay" id="edit-artwork-modal" role="dialog" aria-modal="true">
+        <div class="modal-box" style="max-width: 500px;">
+            <button class="modal-close" aria-label="Kapat" onclick="closeModal('edit-artwork-modal')">✕</button>
+            <h3 style="margin-bottom:20px; font-family:var(--font-display);">Eseri Düzenle</h3>
+            <input type="hidden" id="edit-art-id">
+            <div class="form-group">
+                <label>Eser Adı</label>
+                <input type="text" id="edit-art-title" class="form-input">
+            </div>
+            <div class="form-group">
+                <label>Kategori</label>
+                <select id="edit-art-category" class="form-input">
+                    <option value="Yağlı Boya">Yağlı Boya</option>
+                    <option value="Suluboya">Suluboya</option>
+                    <option value="Heykel">Heykel</option>
+                    <option value="Dijital">Dijital</option>
+                    <option value="Fotoğraf">Fotoğraf</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Fiyat (₺)</label>
+                <input type="number" id="edit-art-price" class="form-input" min="0">
+            </div>
+            <div class="form-group">
+                <label>Görsel URL (veya CSS Gradient)</label>
+                <input type="text" id="edit-art-image" class="form-input" placeholder="Örn: linear-gradient(135deg, #1a0533, #a855f7)">
+            </div>
+            <button class="btn-primary btn-full" onclick="submitEditArtwork()">Güncelle</button>
         </div>
     </div>
 

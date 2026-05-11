@@ -48,6 +48,20 @@ def init_db():
         ''')
         conn.commit()
         
+    cur.execute("PRAGMA table_info(Artworks)")
+    columns = {row[1] for row in cur.fetchall()}
+    if 'SellerID' not in columns:
+        print("Migration: Artworks tablosuna SellerID kolonu ekleniyor...")
+        cur.execute('ALTER TABLE Artworks ADD COLUMN SellerID INTEGER REFERENCES Users(UserID)')
+        conn.commit()
+
+    cur.execute("PRAGMA table_info(Events)")
+    columns = {row[1] for row in cur.fetchall()}
+    if 'SellerID' not in columns:
+        print("Migration: Events tablosuna SellerID kolonu ekleniyor...")
+        cur.execute('ALTER TABLE Events ADD COLUMN SellerID INTEGER REFERENCES Users(UserID)')
+        conn.commit()
+
     conn.close()
 
 def get_db_connection():
@@ -61,8 +75,10 @@ def get_artworks():
     artworks = conn.execute('''
         SELECT a.*,
                COALESCE((SELECT AVG(c.Rating) FROM Comments c WHERE c.EntityType='Artwork' AND c.EntityID=a.ArtworkID AND c.Rating IS NOT NULL AND c.ParentCommentID IS NULL), 0) AS AvgRating,
-               COALESCE((SELECT COUNT(*) FROM Comments c WHERE c.EntityType='Artwork' AND c.EntityID=a.ArtworkID AND c.ParentCommentID IS NULL), 0) AS ReviewCount
+               COALESCE((SELECT COUNT(*) FROM Comments c WHERE c.EntityType='Artwork' AND c.EntityID=a.ArtworkID AND c.ParentCommentID IS NULL), 0) AS ReviewCount,
+               u.FullName AS SellerName
         FROM Artworks a
+        LEFT JOIN Users u ON a.SellerID = u.UserID
     ''').fetchall()
     conn.close()
     return jsonify([dict(ix) for ix in artworks])
@@ -95,8 +111,10 @@ def get_events():
         SELECT e.*, 
                COALESCE((SELECT SUM(ParticipantCount) FROM Reservations r WHERE r.EventID = e.EventID AND r.Status = 'Active'), 0) as RegisteredCount,
                COALESCE((SELECT AVG(c.Rating) FROM Comments c WHERE c.EntityType='Event' AND c.EntityID=e.EventID AND c.Rating IS NOT NULL AND c.ParentCommentID IS NULL), 0) AS AvgRating,
-               COALESCE((SELECT COUNT(*) FROM Comments c WHERE c.EntityType='Event' AND c.EntityID=e.EventID AND c.ParentCommentID IS NULL), 0) AS ReviewCount
+               COALESCE((SELECT COUNT(*) FROM Comments c WHERE c.EntityType='Event' AND c.EntityID=e.EventID AND c.ParentCommentID IS NULL), 0) AS ReviewCount,
+               u.FullName AS SellerName
         FROM Events e
+        LEFT JOIN Users u ON e.SellerID = u.UserID
     ''').fetchall()
     conn.close()
     return jsonify([dict(ix) for ix in events])
@@ -138,16 +156,20 @@ def register():
     name = data.get('name')
     email = data.get('email')
     password = data.get('password')
+    role = data.get('role', 'Customer')
+    
+    if role not in ['Customer', 'Seller']:
+        role = 'Customer'
     
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
         hashed = generate_password_hash(password)
-        cursor.execute('INSERT INTO Users (FullName, Email, PasswordHash) VALUES (?, ?, ?)', (name, email, hashed))
+        cursor.execute('INSERT INTO Users (FullName, Email, PasswordHash, Role) VALUES (?, ?, ?, ?)', (name, email, hashed, role))
         conn.commit()
         user_id = cursor.lastrowid
         conn.close()
-        return jsonify({'success': True, 'user': {'id': user_id, 'name': name, 'email': email, 'role': 'Customer'}})
+        return jsonify({'success': True, 'user': {'id': user_id, 'name': name, 'email': email, 'role': role}})
     except sqlite3.IntegrityError:
         conn.close()
         return jsonify({'success': False, 'message': 'Bu e-posta adresi zaten kullanılıyor'}), 400
@@ -745,6 +767,78 @@ def get_user_purchased_artworks(user_id):
     ''', (user_id,)).fetchall()
     conn.close()
     return jsonify({'success': True, 'artworks': [dict(r) for r in rows]})
+
+
+@app.route('/api/seller/artworks/<int:user_id>', methods=['GET'])
+def get_seller_artworks(user_id):
+    conn = get_db_connection()
+    artworks = conn.execute('SELECT * FROM Artworks WHERE SellerID = ? ORDER BY CreatedAt DESC', (user_id,)).fetchall()
+    conn.close()
+    return jsonify({'success': True, 'artworks': [dict(ix) for ix in artworks]})
+
+@app.route('/api/seller/artworks', methods=['POST'])
+def add_seller_artwork():
+    data = request.json
+    seller_id = data.get('seller_id')
+    title = data.get('title')
+    category = data.get('category')
+    price = data.get('price')
+    image_url = data.get('image_url')
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO Artworks (Title, Category, Price, ImageURL, SellerID) VALUES (?, ?, ?, ?, ?)',
+                   (title, category, price, image_url, seller_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': 'Eser eklendi'})
+
+@app.route('/api/seller/artworks/<int:artwork_id>', methods=['PUT'])
+def edit_seller_artwork(artwork_id):
+    data = request.json
+    seller_id = data.get('seller_id')
+    title = data.get('title')
+    category = data.get('category')
+    price = data.get('price')
+    image_url = data.get('image_url')
+    
+    conn = get_db_connection()
+    # Verify ownership
+    row = conn.execute('SELECT SellerID FROM Artworks WHERE ArtworkID = ?', (artwork_id,)).fetchone()
+    if not row or row['SellerID'] != seller_id:
+        conn.close()
+        return jsonify({'success': False, 'message': 'Yetkiniz yok veya eser bulunamadı'}), 403
+
+    conn.execute('UPDATE Artworks SET Title = ?, Category = ?, Price = ?, ImageURL = ? WHERE ArtworkID = ?',
+                   (title, category, price, image_url, artwork_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': 'Eser güncellendi'})
+
+@app.route('/api/seller/events/<int:user_id>', methods=['GET'])
+def get_seller_events(user_id):
+    conn = get_db_connection()
+    events = conn.execute('SELECT * FROM Events WHERE SellerID = ? ORDER BY CreatedAt DESC', (user_id,)).fetchall()
+    conn.close()
+    return jsonify({'success': True, 'events': [dict(ix) for ix in events]})
+
+@app.route('/api/seller/events', methods=['POST'])
+def add_seller_event():
+    data = request.json
+    seller_id = data.get('seller_id')
+    title = data.get('title')
+    description = data.get('description')
+    event_date = data.get('event_date')
+    capacity = data.get('capacity')
+    price = data.get('price')
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO Events (Title, Description, EventDate, Capacity, Price, SellerID) VALUES (?, ?, ?, ?, ?, ?)',
+                   (title, description, event_date, capacity, price, seller_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': 'Etkinlik eklendi'})
 
 
 if __name__ == '__main__':
