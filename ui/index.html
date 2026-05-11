@@ -611,7 +611,7 @@
 
     <!-- EDIT RESERVATION MODAL -->
     <div class="modal-overlay" id="edit-res-modal" role="dialog" aria-modal="true">
-        <div class="modal-box" id="edit-res-modal-box" style="max-width: 600px;">
+        <div class="modal-box" id="edit-res-modal-box" style="max-width: 600px; padding: 32px;">
             <button class="modal-close" id="edit-res-modal-close" aria-label="Kapat" onclick="closeModal('edit-res-modal')">✕</button>
             <h3 style="margin-bottom:16px;">Rezervasyonu Güncelle</h3>
             <div id="edit-res-content">
@@ -622,7 +622,7 @@
 
     <!-- COMPARE MODAL -->
     <div class="modal-overlay" id="compare-modal" role="dialog" aria-modal="true">
-        <div class="modal-box" id="compare-modal-box" style="max-width: 900px; width: 95%;">
+        <div class="modal-box" id="compare-modal-box" style="max-width: 900px; width: 95%; padding: 32px;">
             <button class="modal-close" id="compare-modal-close" aria-label="Kapat" onclick="closeModal('compare-modal')">✕</button>
             <h3 style="margin-bottom:16px;font-family:var(--font-display);font-size:1.8rem;" id="compare-modal-title">Karşılaştırma</h3>
             <div id="compare-modal-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:24px;">
@@ -648,7 +648,7 @@
 
     <!-- ADMIN REPLY MODAL (Madde 14) -->
     <div class="modal-overlay" id="admin-reply-modal" role="dialog" aria-modal="true">
-        <div class="modal-box" style="max-width: 500px;">
+        <div class="modal-box" style="max-width: 500px; padding: 32px;">
             <button class="modal-close" aria-label="Kapat" onclick="closeModal('admin-reply-modal')">✕</button>
             <h3 style="margin-bottom:16px; font-family:var(--font-display);">🛡️ Yönetici Yanıtı</h3>
             <p style="color:var(--text2); font-size:.9rem; margin-bottom:16px;">Seçilen yoruma yönetici olarak yanıt yazın:</p>
@@ -659,7 +659,7 @@
 
     <!-- SELLER ADD ARTWORK MODAL -->
     <div class="modal-overlay" id="add-artwork-modal" role="dialog" aria-modal="true">
-        <div class="modal-box" style="max-width: 500px;">
+        <div class="modal-box" style="max-width: 500px; padding: 32px;">
             <button class="modal-close" aria-label="Kapat" onclick="closeModal('add-artwork-modal')">✕</button>
             <h3 style="margin-bottom:20px; font-family:var(--font-display);">Yeni Eser Ekle</h3>
             <div class="form-group">
@@ -690,7 +690,7 @@
 
     <!-- SELLER ADD EVENT MODAL -->
     <div class="modal-overlay" id="add-event-modal" role="dialog" aria-modal="true">
-        <div class="modal-box" style="max-width: 500px;">
+        <div class="modal-box" style="max-width: 500px; padding: 32px;">
             <button class="modal-close" aria-label="Kapat" onclick="closeModal('add-event-modal')">✕</button>
             <h3 style="margin-bottom:20px; font-family:var(--font-display);">Yeni Etkinlik Ekle</h3>
             <div class="form-group">
@@ -713,14 +713,68 @@
                 <label>Kişi Başı Ücret (₺)</label>
                 <input type="number" id="add-evt-price" class="form-input" min="0">
             </div>
+            <div class="form-group">
+                <label>Etkinlik Türü</label>
+                <select id="add-evt-type" class="form-input">
+                    <option value="Atölye">Atölye</option>
+                    <option value="Workshop">Workshop</option>
+                    <option value="Sergi">Sergi</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Gün Sayısı (Etkinlik Süresi)</label>
+                <input type="number" id="add-evt-duration" class="form-input" min="1" value="3">
+            </div>
             <button class="btn-primary btn-full" onclick="submitNewEvent()">Satışa Koy</button>
+        </div>
+    </div>
+
+    <!-- SELLER EDIT EVENT MODAL -->
+    <div class="modal-overlay" id="edit-event-modal" role="dialog" aria-modal="true">
+        <div class="modal-box" style="max-width: 500px; padding: 32px;">
+            <button class="modal-close" aria-label="Kapat" onclick="closeModal('edit-event-modal')">✕</button>
+            <h3 style="margin-bottom:20px; font-family:var(--font-display);">Etkinliği Düzenle</h3>
+            <input type="hidden" id="edit-evt-id">
+            <div class="form-group">
+                <label>Etkinlik Adı</label>
+                <input type="text" id="edit-evt-title" class="form-input">
+            </div>
+            <div class="form-group">
+                <label>Açıklama</label>
+                <textarea id="edit-evt-desc" class="form-input" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Tarih ve Saat</label>
+                <input type="datetime-local" id="edit-evt-date" class="form-input">
+            </div>
+            <div class="form-group">
+                <label>Kapasite (Kişi)</label>
+                <input type="number" id="edit-evt-capacity" class="form-input" min="1">
+            </div>
+            <div class="form-group">
+                <label>Kişi Başı Ücret (₺)</label>
+                <input type="number" id="edit-evt-price" class="form-input" min="0">
+            </div>
+            <div class="form-group">
+                <label>Etkinlik Türü</label>
+                <select id="edit-evt-type" class="form-input">
+                    <option value="Atölye">Atölye</option>
+                    <option value="Workshop">Workshop</option>
+                    <option value="Sergi">Sergi</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Gün Sayısı (Etkinlik Süresi)</label>
+                <input type="number" id="edit-evt-duration" class="form-input" min="1" value="3">
+            </div>
+            <button class="btn-primary btn-full" onclick="submitEditEvent()">Güncelle</button>
         </div>
     </div>
     </div>
 
     <!-- SELLER EDIT ARTWORK MODAL -->
     <div class="modal-overlay" id="edit-artwork-modal" role="dialog" aria-modal="true">
-        <div class="modal-box" style="max-width: 500px;">
+        <div class="modal-box" style="max-width: 500px; padding: 32px;">
             <button class="modal-close" aria-label="Kapat" onclick="closeModal('edit-artwork-modal')">✕</button>
             <h3 style="margin-bottom:20px; font-family:var(--font-display);">Eseri Düzenle</h3>
             <input type="hidden" id="edit-art-id">
@@ -753,6 +807,6 @@
     <!-- TOAST -->
     <div class="toast-container" id="toast-container"></div>
 
-    <script src="app.js?v=16"></script>
+    <script src="app.js?v=20"></script>
 </body>
 </html>

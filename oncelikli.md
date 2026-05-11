@@ -7,14 +7,14 @@ müşteriye kupon tanımlama.
 
 karşılaştırma kısmında tüm kontenjan gösterilecek. kullanıcı kısmında görüntülenme de karşılaştırılıyor.
 
-satıcı, sanatçı, galeri yöneticisinin ayrı sayfası olacak
+satıcı, sanatçı, galeri yöneticisinin ayrı sayfası olacak(x)
 
-Eserler ve etkinlikler satıcı dashboard'undan kaldırılabilmeli
+Eserler ve etkinlikler satıcı dashboard'undan kaldırılabilmeli(x)
 
-Etkinlikler eklenirken etkinlik türü seçeneği eklenmeli
+Etkinlikler eklenirken etkinlik türü seçeneği eklenmeli(x)
 
-Etkinlikler de eserler gibi satıcı dashboard'undan düzenlenebilmeli
+Etkinlikler de eserler gibi satıcı dashboard'undan düzenlenebilmeli(x)
 
-Etkinlikler eklenirken gün sayısı seçeneği eklenebilir
+Etkinlikler eklenirken gün sayısı seçeneği eklenebilir(x)
 
 Doğrulanmış kullanıcılar nasıl doğrulanmalı?

@@ -831,14 +831,68 @@ def add_seller_event():
     event_date = data.get('event_date')
     capacity = data.get('capacity')
     price = data.get('price')
+    event_type = data.get('event_type')
+    duration_days = data.get('duration_days', 3)
     
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('INSERT INTO Events (Title, Description, EventDate, Capacity, Price, SellerID) VALUES (?, ?, ?, ?, ?, ?)',
-                   (title, description, event_date, capacity, price, seller_id))
+    cursor.execute('INSERT INTO Events (Title, Description, EventDate, Capacity, Price, SellerID, EventType, DurationDays) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                   (title, description, event_date, capacity, price, seller_id, event_type, duration_days))
     conn.commit()
     conn.close()
     return jsonify({'success': True, 'message': 'Etkinlik eklendi'})
+
+@app.route('/api/seller/events/<int:event_id>', methods=['PUT'])
+def edit_seller_event(event_id):
+    data = request.json
+    seller_id = data.get('seller_id')
+    title = data.get('title')
+    description = data.get('description')
+    event_date = data.get('event_date')
+    capacity = data.get('capacity')
+    price = data.get('price')
+    event_type = data.get('event_type')
+    duration_days = data.get('duration_days', 3)
+    
+    conn = get_db_connection()
+    row = conn.execute('SELECT SellerID FROM Events WHERE EventID = ?', (event_id,)).fetchone()
+    if not row or row['SellerID'] != seller_id:
+        conn.close()
+        return jsonify({'success': False, 'message': 'Yetkiniz yok veya etkinlik bulunamadı'}), 403
+
+    conn.execute('UPDATE Events SET Title = ?, Description = ?, EventDate = ?, Capacity = ?, Price = ?, EventType = ?, DurationDays = ? WHERE EventID = ?',
+                   (title, description, event_date, capacity, price, event_type, duration_days, event_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': 'Etkinlik güncellendi'})
+
+@app.route('/api/seller/events/<int:event_id>', methods=['DELETE'])
+def delete_seller_event(event_id):
+    seller_id = request.args.get('seller_id', type=int)
+    conn = get_db_connection()
+    row = conn.execute('SELECT SellerID FROM Events WHERE EventID = ?', (event_id,)).fetchone()
+    if not row or row['SellerID'] != seller_id:
+        conn.close()
+        return jsonify({'success': False, 'message': 'Yetkiniz yok veya etkinlik bulunamadı'}), 403
+
+    conn.execute('DELETE FROM Events WHERE EventID = ?', (event_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': 'Etkinlik silindi'})
+
+@app.route('/api/seller/artworks/<int:artwork_id>', methods=['DELETE'])
+def delete_seller_artwork(artwork_id):
+    seller_id = request.args.get('seller_id', type=int)
+    conn = get_db_connection()
+    row = conn.execute('SELECT SellerID FROM Artworks WHERE ArtworkID = ?', (artwork_id,)).fetchone()
+    if not row or row['SellerID'] != seller_id:
+        conn.close()
+        return jsonify({'success': False, 'message': 'Yetkiniz yok veya eser bulunamadı'}), 403
+
+    conn.execute('DELETE FROM Artworks WHERE ArtworkID = ?', (artwork_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': 'Eser silindi'})
 
 
 if __name__ == '__main__':

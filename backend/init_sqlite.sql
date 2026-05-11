@@ -27,6 +27,7 @@ CREATE TABLE Artworks (
     StockStatus TEXT DEFAULT 'Available',
     ImageURL TEXT,
     ViewCount INTEGER DEFAULT 0,
+    SellerID INTEGER REFERENCES Users(UserID),
     CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -37,6 +38,9 @@ CREATE TABLE Events (
     EventDate DATETIME NOT NULL,
     Capacity INTEGER NOT NULL,
     Price REAL NOT NULL,
+    SellerID INTEGER REFERENCES Users(UserID),
+    EventType TEXT DEFAULT 'Atölye',
+    DurationDays INTEGER DEFAULT 3,
     CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

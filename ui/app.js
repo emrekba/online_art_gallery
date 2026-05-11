@@ -29,13 +29,12 @@ async function fetchInitialData() {
     events = rawEvents.map(e => {
       const d = new Date(e.EventDate);
       const months = ['OCA','ŞUB','MAR','NİS','MAY','HAZ','TEM','AĞU','EYL','EKİ','KAS','ARA'];
-      // Basit bir eşleştirme (Type sütunu DB'de yoksa başlığa göre ayarla)
-      const type = e.Title.includes('Sergi') ? 'Sergi' : (e.Title.includes('Workshop') ? 'Workshop' : 'Atölye');
+      const type = e.EventType || 'Atölye';
       const colors = ['linear-gradient(135deg,#1a0533,#a855f7)', 'linear-gradient(135deg,#0c4a6e,#22d3ee)', 'linear-gradient(135deg,#78350f,#f59e0b)'];
       return {
         id: e.EventID, title: e.Title, description: e.Description, date: e.EventDate,
         day: d.getDate().toString().padStart(2, '0'), month: months[d.getMonth()],
-        baseCapacity: e.Capacity, capacity: e.Capacity * 21, registered: e.RegisteredCount || 0, price: e.Price,
+        baseCapacity: e.Capacity, capacity: e.Capacity * 21, registered: e.RegisteredCount || 0, price: e.Price, duration: e.DurationDays || 3,
         type: type, gradient: colors[e.EventID % 3], rating: e.AvgRating ? Math.round(e.AvgRating * 10) / 10 : 0, reservations: e.RegisteredCount || 0, reviews: e.ReviewCount || 0, sellerName: e.SellerName
       };
     });
@@ -552,13 +551,14 @@ async function openEvent(id) {
   const dayNames = ['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
   const monthNames = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
   let dayButtonsHtml = '';
-  for(let i = 0; i < 3; i++) {
+  const duration = e.duration || 3;
+  for(let i = 0; i < duration; i++) {
       const dd = new Date(startDate);
       dd.setDate(dd.getDate() + i);
       const label = `${dd.getDate()} ${monthNames[dd.getMonth()]} ${dayNames[dd.getDay()]}`;
       const dateKey = `${dd.getFullYear()}-${(dd.getMonth()+1).toString().padStart(2,'0')}-${dd.getDate().toString().padStart(2,'0')}`;
       dayButtonsHtml += `<button class="day-tab ${i===0?'active':''}" data-datekey="${dateKey}" onclick="selectDay(this, ${id}, '${dateKey}')" style="
-          flex:1; padding:10px 8px; border-radius:8px; border:2px solid ${i===0?'var(--accent)':'var(--border)'};
+          flex: 1 1 calc(25% - 6px); padding:10px 8px; border-radius:8px; border:2px solid ${i===0?'var(--accent)':'var(--border)'};
           background:${i===0?'rgba(168,85,247,0.15)':'var(--bg2)'}; color:${i===0?'var(--accent)':'var(--text2)'};
           cursor:pointer; font-size:0.85rem; font-weight:${i===0?'600':'400'}; transition:all 0.2s;
       ">${label}</button>`;
@@ -579,7 +579,7 @@ async function openEvent(id) {
     </div>
     <div style="margin-bottom:20px; background:var(--bg3); padding:16px; border-radius:10px; border:1px solid var(--border);">
         <label style="font-weight:600; display:block; margin-bottom:10px;">📅 Tarih Seçin:</label>
-        <div style="display:flex; gap:8px; margin-bottom:12px;">${dayButtonsHtml}</div>
+        <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">${dayButtonsHtml}</div>
         <label style="font-weight:600; display:block; margin-bottom:10px;">🕐 Saat Seçin:</label>
         <div id="time-slots-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;">
             <p style="color:var(--text3); font-size:0.85rem; grid-column:1/-1;">Yükleniyor...</p>
@@ -1234,7 +1234,8 @@ async function openEditReservation(resId, eventId, currentDate, currentCount) {
         }
     }
 
-    for(let i = 0; i < 3; i++) {
+    const duration = e.duration || 3;
+    for(let i = 0; i < duration; i++) {
         const dd = new Date(startDate);
         dd.setDate(dd.getDate() + i);
         const label = `${dd.getDate()} ${monthNames[dd.getMonth()]} ${dayNames[dd.getDay()]}`;
@@ -1243,7 +1244,7 @@ async function openEditReservation(resId, eventId, currentDate, currentCount) {
         const isSelected = (dateKey === curDateKey) || (i === 0 && !curDateKey);
         
         dayButtonsHtml += `<button class="edit-day-tab ${isSelected?'active':''}" data-datekey="${dateKey}" onclick="selectEditDay(this, ${eventId}, '${dateKey}', ${resId})" style="
-            flex:1; padding:10px 8px; border-radius:8px; border:2px solid ${isSelected?'var(--accent)':'var(--border)'};
+            flex: 1 1 calc(25% - 6px); padding:10px 8px; border-radius:8px; border:2px solid ${isSelected?'var(--accent)':'var(--border)'};
             background:${isSelected?'rgba(168,85,247,0.15)':'var(--bg2)'}; color:${isSelected?'var(--accent)':'var(--text2)'};
             cursor:pointer; font-size:0.85rem; font-weight:${isSelected?'600':'400'}; transition:all 0.2s;
         ">${label}</button>`;
@@ -1252,7 +1253,7 @@ async function openEditReservation(resId, eventId, currentDate, currentCount) {
     const contentHtml = `
         <div style="margin-bottom:20px; background:var(--bg3); padding:16px; border-radius:10px; border:1px solid var(--border);">
             <label style="font-weight:600; display:block; margin-bottom:10px;">📅 Yeni Tarih Seçin:</label>
-            <div style="display:flex; gap:8px; margin-bottom:12px;">${dayButtonsHtml}</div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">${dayButtonsHtml}</div>
             <label style="font-weight:600; display:block; margin-bottom:10px;">🕐 Yeni Saat Seçin:</label>
             <div id="edit-time-slots-grid" style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;">
                 <p style="color:var(--text3); font-size:0.85rem; grid-column:1/-1;">Yükleniyor...</p>
@@ -1818,7 +1819,8 @@ async function loadSellerDashboard() {
                     </div>
                     <div style="text-align:right; display:flex; flex-direction:column; gap:8px;">
                         <span style="font-weight:bold; color:var(--gold);">₺${a.Price.toLocaleString('tr-TR')}</span>
-                        <button class="btn-outline" style="padding:4px 8px; font-size:0.8rem;" onclick="openEditArtworkModal(${a.ArtworkID}, \`${a.Title.replace(/`/g, '')}\`, \`${a.Category}\`, ${a.Price}, \`${a.ImageURL}\`)">Düzenle</button>
+                        <button class="btn-outline" style="padding:4px 8px; font-size:0.8rem; margin-bottom:4px;" onclick="openEditArtworkModal(${a.ArtworkID}, \`${a.Title.replace(/`/g, '')}\`, \`${a.Category}\`, ${a.Price}, \`${a.ImageURL}\`)">Düzenle</button>
+                        <button class="btn-outline" style="padding:4px 8px; font-size:0.8rem; color:#ef4444; border-color:#ef4444;" onclick="deleteSellerArtwork(${a.ArtworkID})">Sil</button>
                     </div>
                 </div>
             `).join('');
@@ -1837,8 +1839,10 @@ async function loadSellerDashboard() {
                         <h4 style="margin:0 0 4px 0">${e.Title}</h4>
                         <span style="color:var(--text2); font-size:0.85rem;">Tarih: ${e.EventDate} | Kapasite: ${e.Capacity} Kişi</span>
                     </div>
-                    <div style="text-align:right;">
+                    <div style="text-align:right; display:flex; flex-direction:column; gap:8px;">
                         <span style="font-weight:bold; color:var(--gold);">₺${e.Price.toLocaleString('tr-TR')}</span>
+                        <button class="btn-outline" style="padding:4px 8px; font-size:0.8rem; margin-bottom:4px;" onclick="openEditEventModal(${e.EventID}, \`${e.Title.replace(/`/g, '')}\`, \`${e.Description.replace(/`/g, '')}\`, \`${e.EventDate}\`, ${e.Capacity}, ${e.Price}, \`${e.EventType || 'Atölye'}\`, ${e.DurationDays || 3})">Düzenle</button>
+                        <button class="btn-outline" style="padding:4px 8px; font-size:0.8rem; color:#ef4444; border-color:#ef4444;" onclick="deleteSellerEvent(${e.EventID})">Sil</button>
                     </div>
                 </div>
             `).join('');
@@ -1893,6 +1897,9 @@ async function submitNewEvent() {
     const capacity = parseInt(document.getElementById('add-evt-capacity').value);
     const price = parseInt(document.getElementById('add-evt-price').value);
 
+    const event_type = document.getElementById('add-evt-type').value;
+    const duration_days = parseInt(document.getElementById('add-evt-duration').value) || 3;
+
     if (!title || !description || !event_date || isNaN(capacity) || isNaN(price)) {
         showToast('Lütfen tüm alanları doldurun.', 'error');
         return;
@@ -1906,7 +1913,7 @@ async function submitNewEvent() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 seller_id: state.user.id,
-                title, description, event_date: formatted_date, capacity, price
+                title, description, event_date: formatted_date, capacity, price, event_type, duration_days
             })
         });
         const data = await res.json();
@@ -1966,6 +1973,96 @@ async function submitEditArtwork() {
             fetchInitialData();
         } else {
             showToast(data.message || 'Hata oluştu.', 'error');
+        }
+    } catch (err) {
+        showToast('Sunucu hatası.', 'error');
+    }
+}
+
+async function deleteSellerArtwork(id) {
+    if (!confirm('Bu eseri silmek istediğinize emin misiniz?')) return;
+    try {
+        const res = await fetch(`${API_URL}/seller/artworks/${id}?seller_id=${state.user.id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+            showToast('Eser silindi.', 'success');
+            loadSellerDashboard();
+            fetchInitialData();
+        } else {
+            showToast(data.message, 'error');
+        }
+    } catch (err) {
+        showToast('Sunucu hatası.', 'error');
+    }
+}
+
+function openEditEventModal(id, title, desc, dateStr, capacity, price, eventType, durationDays) {
+    document.getElementById('edit-evt-id').value = id;
+    document.getElementById('edit-evt-title').value = title;
+    document.getElementById('edit-evt-desc').value = desc;
+    document.getElementById('edit-evt-date').value = dateStr.replace(' ', 'T').substring(0, 16);
+    document.getElementById('edit-evt-capacity').value = capacity;
+    document.getElementById('edit-evt-price').value = price;
+    document.getElementById('edit-evt-type').value = eventType;
+    document.getElementById('edit-evt-duration').value = durationDays;
+    document.getElementById('edit-event-modal').classList.add('open');
+}
+
+async function submitEditEvent() {
+    const id = document.getElementById('edit-evt-id').value;
+    const title = document.getElementById('edit-evt-title').value;
+    const description = document.getElementById('edit-evt-desc').value;
+    const event_date = document.getElementById('edit-evt-date').value;
+    const capacity = parseInt(document.getElementById('edit-evt-capacity').value);
+    const price = parseInt(document.getElementById('edit-evt-price').value);
+    const event_type = document.getElementById('edit-evt-type').value;
+    const duration_days = parseInt(document.getElementById('edit-evt-duration').value) || 3;
+
+    if (!title || !description || !event_date || isNaN(capacity) || isNaN(price)) {
+        showToast('Lütfen tüm alanları doldurun.', 'error');
+        return;
+    }
+
+    let formatted_date = event_date;
+    if (formatted_date.includes('T')) {
+        formatted_date = formatted_date.replace('T', ' ');
+        if (formatted_date.length === 16) formatted_date += ':00';
+    }
+
+    try {
+        const res = await fetch(`${API_URL}/seller/events/${id}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                seller_id: state.user.id,
+                title, description, event_date: formatted_date, capacity, price, event_type, duration_days
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('Etkinlik güncellendi.', 'success');
+            closeModal('edit-event-modal');
+            loadSellerDashboard();
+            fetchInitialData();
+        } else {
+            showToast(data.message || 'Hata oluştu.', 'error');
+        }
+    } catch (err) {
+        showToast('Sunucu hatası.', 'error');
+    }
+}
+
+async function deleteSellerEvent(id) {
+    if (!confirm('Bu etkinliği silmek istediğinize emin misiniz?')) return;
+    try {
+        const res = await fetch(`${API_URL}/seller/events/${id}?seller_id=${state.user.id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+            showToast('Etkinlik silindi.', 'success');
+            loadSellerDashboard();
+            fetchInitialData();
+        } else {
+            showToast(data.message, 'error');
         }
     } catch (err) {
         showToast('Sunucu hatası.', 'error');
