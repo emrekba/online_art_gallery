@@ -19,3 +19,4 @@ Thumbs.db
 
 # Node.js (Eğer ilerde kullanılırsa)
 node_modules/
+/.vs
