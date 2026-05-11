@@ -154,7 +154,7 @@
 
 ## 📌 FAZ 3 — Gerçek Backend Kurulumu (API)
 
-> **Mevcut Durum:** Devam Ediyor... ⏳
+> **Mevcut Durum:** ✅ Tamamlandı
 
 - [x] **Proje Altyapısı**
   - [x] Python virtual environment kurulumu
@@ -162,34 +162,34 @@
 - [x] **Veritabanı (SQLite)**
   - [x] `init_sqlite.sql` şemasının oluşturulması
   - [x] Tabloların oluşturulup örnek (seed) verilerin eklenmesi
-- [ ] **REST API Uç Noktaları**
-  - [x] `GET /api/artworks` ve `GET /api/events` (Listeleme)
+- [x] **REST API Uç Noktaları**
+  - [x] `GET /api/artworks` ve `GET /api/events` (Listeleme + AvgRating + ReviewCount)
   - [x] `POST /api/register` ve `POST /api/login` (Auth)
   - [x] `POST /api/favorites` (Favorilere ekleme/çıkarma)
   - [x] `POST /api/reservations` (Rezervasyon yapma)
   - [x] `POST /api/orders` (Satın alma — çoklu satın almayı destekler)
-  - [x] `GET /api/comments/artwork/<id>` ve `GET /api/comments/event/<id>` (yorumları listele)
-  - [x] `POST /api/comments` (eser & etkinlik için doğrulamalı yorum oluşturma)
+  - [x] `GET /api/comments/artwork/<id>` ve `GET /api/comments/event/<id>` (yorumları listele + sort + vote bilgisi)
+  - [x] `POST /api/comments` (eser & etkinlik için doğrulamalı yorum oluşturma + admin yanıtı)
   - [x] `GET /api/user/<id>/purchased-artworks` & `GET /api/user/<id>/attended-events` (yorumlanabilir varlıklar)
-  - [ ] İleri istatistik API'leri (Madde 13-14 için: vote, reply)
+  - [x] İleri istatistik API'leri (`POST /api/comments/<id>/vote`, sort=helpful/highest/newest, AvgRating subquery)
 
 ---
 
 ## 📌 FAZ 4 — UI Entegrasyonu ve Eksik Özelliklerin Tamamlanması
 
-> **Mevcut Durum:** Bekliyor... ❌
+> **Mevcut Durum:** ✅ Tamamlandı
 
 ### Öncelik 1 — Backend Bağlantısı (Fetch API)
 - [x] Eserler ve Etkinlikler mock veriler yerine sunucudan çekilecek
 - [x] Giriş/Kayıt işlemleri gerçek API üzerinden yapılacak
 
 ### Öncelik 2 — Eksik Arayüzlerin Eklenmesi
-- [ ] **Favori Listesi Sayfası** ekle (Madde 3)
+- [x] **Favori Listesi Sayfası** ekle (Madde 3 — Profil > Favorilerim sekmesi)
 - [x] **Rezervasyon Formu** — katılımcı sayısı seçimi (Madde 4)
 - [x] **Profil Sayfası** — bilgi güncelleme, geçmiş siparişler, rezervasyon yönetimi (Madde 5, 7, 8)
 - [x] **Ödeme Ekranı Modalı** — yöntem seçimi ve onay (Madde 6)
 - [x] **Yorum Sistemi (Eser & Etkinlik)** — modal ve profilde "Yorum Yap" + Doğrulanmış Alıcı/Katılımcı rozetleri (Madde 12 ✅)
-- [ ] **Faydalı Bulma + Yanıt** — Madde 13, 14 (CommentVotes & ParentCommentID)
+- [x] **Faydalı Bulma + Yanıt** — 👍/👎 toggle oy butonları + Admin yanıt modalı (Madde 13, 14 ✅)
 
 ### Öncelik 3 — Ekstra Özellikler
 - [x] **İndirim/Kupon Sistemi** — ödeme ekranında (Madde 9)

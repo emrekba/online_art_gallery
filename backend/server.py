@@ -2,6 +2,7 @@ import sqlite3
 import os
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__, static_folder='../ui', static_url_path='')
 CORS(app) # Tüm domainlerden gelen isteklere izin ver
@@ -120,14 +121,13 @@ def get_event_availability(event_id):
 def login():
     data = request.json
     email = data.get('email')
-    password = data.get('password') # Basitlik için sadece email kontrolü yapalım
+    password = data.get('password')
     
     conn = get_db_connection()
     user = conn.execute('SELECT * FROM Users WHERE Email = ?', (email,)).fetchone()
     conn.close()
     
-    if user:
-        # TODO: Password hash check eklenecek
+    if user and check_password_hash(user['PasswordHash'], password):
         return jsonify({'success': True, 'user': {'id': user['UserID'], 'name': user['FullName'], 'email': user['Email'], 'role': user['Role']}})
     else:
         return jsonify({'success': False, 'message': 'Geçersiz e-posta veya şifre'}), 401
@@ -142,8 +142,8 @@ def register():
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
-        # Gerçek uygulamada şifre hashlenmelidir (örn: werkzeug.security)
-        cursor.execute('INSERT INTO Users (FullName, Email, PasswordHash) VALUES (?, ?, ?)', (name, email, password))
+        hashed = generate_password_hash(password)
+        cursor.execute('INSERT INTO Users (FullName, Email, PasswordHash) VALUES (?, ?, ?)', (name, email, hashed))
         conn.commit()
         user_id = cursor.lastrowid
         conn.close()

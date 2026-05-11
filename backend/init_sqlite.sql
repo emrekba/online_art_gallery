@@ -147,6 +147,6 @@ INSERT INTO Events (Title, Description, EventDate, Capacity, Price) VALUES
 ('Fotoğraf & Sanat', 'Dijital arşivleme teknikleri.', '2026-06-18 13:00:00', 25, 280),
 ('Dijital İllüstrasyon', 'Tablet ile dijital sanat üretimi.', '2026-07-05 11:00:00', 18, 650);
 
--- Mock User (şifre 123456 hash'lenmiş varsayalım)
+-- Mock User (şifre: admin123)
 INSERT INTO Users (FullName, Email, PasswordHash, Role) VALUES 
-('Admin User', 'admin@artverse.com', 'scrypt:32768:8:1$7eL9s2A4$b2b...', 'Admin');
+('Admin User', 'admin@artverse.com', 'scrypt:32768:8:1$SD9DBbvb0BCVG3HW$abc013cb2bcf023b9b83a1f16019655647d8c0dd68a79c0dbab72201eb5805c625e883a7ae8d704a53253a1004f48f3d539f5c57d2494a2c31c925330aecfd81', 'Admin');

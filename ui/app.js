@@ -987,6 +987,7 @@ async function doLogin() {
           document.getElementById('btn-login').textContent = state.user.name;
           document.getElementById('btn-register').textContent = 'Çıkış';
           document.getElementById('nav-item-profile').style.display = 'inline-block';
+          document.getElementById('nav-item-admin').style.display = state.user.role === 'Admin' ? 'inline-block' : 'none';
           closeModal('login-modal');
           showToast(`Hoş geldiniz, ${state.user.name}! ✓`, 'success');
           loadFavorites();
@@ -1447,7 +1448,8 @@ function doLogout() {
     document.getElementById('btn-login').textContent = 'Giriş Yap'; 
     document.getElementById('btn-register').textContent = 'Kayıt Ol'; 
     document.getElementById('nav-item-profile').style.display = 'none';
-    if(state.page === 'profile') navigate('home');
+    document.getElementById('nav-item-admin').style.display = 'none';
+    if(state.page === 'profile' || state.page === 'admin') navigate('home');
     renderArtworks(); renderHome();
     showToast('Çıkış yapıldı', 'error');
 }
@@ -1463,6 +1465,7 @@ document.addEventListener('DOMContentLoaded', () => {
           document.getElementById('btn-login').textContent = state.user.name;
           document.getElementById('btn-register').textContent = 'Çıkış';
           document.getElementById('nav-item-profile').style.display = 'inline-block';
+          document.getElementById('nav-item-admin').style.display = state.user.role === 'Admin' ? 'inline-block' : 'none';
           loadFavorites();
           fetchSpecialOffer();
       } catch (e) {
