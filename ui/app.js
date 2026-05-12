@@ -21,7 +21,7 @@ async function fetchInitialData() {
     const rawArtworks = await artworksRes.json();
     artworks = rawArtworks.map(a => ({
       id: a.ArtworkID, artistId: a.ArtistID, title: a.Title, category: a.Category,
-      price: a.Price, status: a.StockStatus, rating: a.AvgRating ? Math.round(a.AvgRating * 10) / 10 : 0, reviews: a.ReviewCount || 0, likes: 142,
+      price: a.Price, status: a.StockStatus, rating: a.AvgRating ? Math.round(a.AvgRating * 10) / 10 : 0, reviews: a.ReviewCount || 0,
       viewCount: a.ViewCount || 0, gradient: a.ImageURL, sellerName: a.SellerName, DiscountRate: a.DiscountRate || 0
     }));
     
@@ -108,16 +108,17 @@ function artworkCard(a) {
     </div>
     <div class="card-footer">
       <div style="display:flex; align-items:center; gap:8px;">
-        ${(a.DiscountRate || 0) > 0 ? `
-          <span style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">%${a.DiscountRate}</span>
+        ${(a.DiscountRate || 0) > 0 || (specialOffer && specialOffer.ArtworkID === a.id) ? `
+          <span style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">
+            %${(a.DiscountRate || 0) + (specialOffer && specialOffer.ArtworkID === a.id ? 15 : 0)}
+          </span>
           <span style="text-decoration: line-through; color: var(--text3); font-size: 0.85rem;">₺${a.price.toLocaleString('tr-TR')}</span>
-          <span class="card-price">₺${(a.price * (1 - a.DiscountRate/100)).toLocaleString('tr-TR')}</span>
+          <span class="card-price">₺${((a.price * (1 - (a.DiscountRate||0)/100)) * (specialOffer && specialOffer.ArtworkID === a.id ? 0.85 : 1)).toLocaleString('tr-TR')}</span>
         ` : `
           <span class="card-price">₺${a.price.toLocaleString('tr-TR')}</span>
         `}
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-        <span class="card-views" style="font-size:.75rem;color:var(--text3)">👁️ ${(a.viewCount || 0).toLocaleString('tr-TR')} görüntülenme</span>
         <span class="card-rating"><span class="star">★</span> ${a.rating} (${a.reviews})</span>
       </div>
     </div>
@@ -278,20 +279,20 @@ function openArtwork(id) {
     <h2 style="font-family:var(--font-display);font-size:1.8rem;margin:8px 0 4px">${a.title}</h2>
     <p style="color:var(--text2);margin-bottom:20px">Sanatçı: <strong>${artist ? artist.name : '-'}</strong></p>
     <div style="display:flex;gap:16px;align-items:center;margin-bottom:24px;flex-wrap:wrap">
-      ${(a.DiscountRate || 0) > 0 ? `
+      ${(a.DiscountRate || 0) > 0 || (specialOffer && specialOffer.ArtworkID === a.id) ? `
         <div style="display:flex; flex-direction:column;">
           <span style="text-decoration:line-through; color:var(--text3); font-size:0.9rem;">₺${a.price.toLocaleString('tr-TR')}</span>
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem; font-weight: bold;">%${a.DiscountRate}</span>
-            <span style="font-size:1.6rem;font-weight:700;color:var(--gold)">₺${(a.price * (1 - a.DiscountRate/100)).toLocaleString('tr-TR')}</span>
+            <span style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem; font-weight: bold;">
+                %${(a.DiscountRate || 0) + (specialOffer && specialOffer.ArtworkID === a.id ? 15 : 0)}
+            </span>
+            <span style="font-size:1.6rem;font-weight:700;color:var(--gold)">₺${((a.price * (1 - (a.DiscountRate||0)/100)) * (specialOffer && specialOffer.ArtworkID === a.id ? 0.85 : 1)).toLocaleString('tr-TR')}</span>
           </div>
         </div>
       ` : `
         <span style="font-size:1.6rem;font-weight:700;color:var(--gold)">₺${a.price.toLocaleString('tr-TR')}</span>
       `}
       <span style="color:var(--text2)">★ ${a.rating} · ${a.reviews} yorum</span>
-      <span style="color:var(--text2)">♥ ${a.likes} beğeni</span>
-      <span style="color:var(--text2)">👁️ <span id="artwork-view-count-${id}">${a.viewCount.toLocaleString('tr-TR')}</span> görüntülenme</span>
     </div>
     <div style="display:flex;gap:12px">
       <button class="btn-primary" onclick="buyArtwork(${id})" id="btn-buy-${id}">🛒 Satın Al</button>
@@ -961,7 +962,13 @@ function buyArtwork(id) {
       }
 
       if(specialOffer && specialOffer.ArtworkID === id) {
-          priceHtml = `<span style="text-decoration:line-through; opacity:0.6; font-size:0.9rem;">₺${specialOffer.OriginalPrice.toLocaleString('tr-TR')}</span> <strong style="color:#4ade80;">%15 Özel İndirim -> ₺${specialOffer.DiscountedPrice.toLocaleString('tr-TR')}</strong>`;
+          const combinedRate = (a.DiscountRate || 0) + 15;
+          const finalPrice = basePrice * 0.85;
+          priceHtml = `
+            <span style="text-decoration:line-through; opacity:0.6; font-size:0.9rem;">₺${a.price.toLocaleString('tr-TR')}</span>
+            <strong style="color:#4ade80; font-size:0.85rem; margin-right:8px;">%${combinedRate} Toplam İndirim (Kampanya + Fırsat)</strong>
+            <strong style="color:var(--gold)">₺${finalPrice.toLocaleString('tr-TR')}</strong>
+          `;
       }
       
       document.getElementById('checkout-summary').innerHTML = `

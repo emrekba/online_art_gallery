@@ -265,8 +265,11 @@ def get_special_offer(user_id):
     
     if artwork:
         offer = dict(artwork)
-        offer['OriginalPrice'] = offer['Price']
-        offer['DiscountedPrice'] = offer['Price'] * 0.85 # %15 indirim
+        price = offer['Price']
+        discount_rate = offer.get('DiscountRate', 0) or 0
+        base_price = price * (1 - discount_rate / 100)
+        offer['OriginalPrice'] = price
+        offer['DiscountedPrice'] = base_price * 0.85 # %15 indirim (kampanya üzerine)
         return jsonify({'success': True, 'offer': offer})
     return jsonify({'success': False}), 404
 

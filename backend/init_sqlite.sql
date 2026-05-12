@@ -130,30 +130,6 @@ CREATE TABLE SavedComparisons (
 INSERT INTO Coupons (Code, DiscountType, DiscountValue) VALUES 
 ('KTU10', 'Percent', 10),
 ('ART50', 'Fixed', 50);
-INSERT INTO Artists (Name, Biography, ProfileImage) VALUES 
-('Zeynep Arslan', 'Yağlı boya sanatçısı', 'linear-gradient(135deg,#1a0533,#a855f7)'),
-('Murat Demir', 'Suluboya ustası', 'linear-gradient(135deg,#0c4a6e,#22d3ee)'),
-('Ayşe Kaya', 'Modern heykel', 'linear-gradient(135deg,#78350f,#f59e0b)'),
-('Can Yıldız', 'Dijital illüstratör', 'linear-gradient(135deg,#064e3b,#10b981)'),
-('Elif Şahin', 'Profesyonel fotoğrafçı', 'linear-gradient(135deg,#1e1b4b,#6366f1)');
-
-INSERT INTO Artworks (ArtistID, Title, Category, Price, StockStatus, ImageURL) VALUES 
-(1, 'Boğazd''da Gün Batımı', 'Yağlı Boya', 18500, 'Available', 'linear-gradient(135deg,#1a0533,#4a1a8a,#c2410c,#fbbf24)'),
-(2, 'Mavi Rüya', 'Suluboya', 4200, 'Available', 'linear-gradient(135deg,#0c4a6e,#22d3ee,#a7f3d0)'),
-(3, 'Toprak Ana', 'Heykel', 31000, 'Available', 'linear-gradient(135deg,#78350f,#d97706,#fef3c7)'),
-(4, 'Dijital Kaos', 'Dijital', 2800, 'Available', 'linear-gradient(135deg,#064e3b,#10b981,#d1fae5)'),
-(5, 'İstanbul Sisli', 'Fotoğraf', 6500, 'Available', 'linear-gradient(135deg,#1e1b4b,#6366f1,#e0e7ff)'),
-(1, 'Kızıl Orman', 'Yağlı Boya', 22000, 'Available', 'linear-gradient(135deg,#450a0a,#dc2626,#fca5a5)'),
-(2, 'Yağmur Sonrası', 'Suluboya', 3800, 'Available', 'linear-gradient(135deg,#1e3a5f,#3b82f6,#bfdbfe)'),
-(3, 'Sonsuzluk', 'Heykel', 45000, 'Available', 'linear-gradient(135deg,#2d1b69,#8b5cf6,#ede9fe)');
-
-INSERT INTO Events (Title, Description, EventDate, Capacity, Price) VALUES 
-('Yağlı Boya Atölyesi', 'Başlangıç seviyesi yağlı boya teknikleri.', '2026-05-15 10:00:00', 20, 450),
-('Modern Sanat Sergisi', 'Çağdaş Türk sanatçıların sergisi.', '2026-05-20 18:00:00', 200, 120),
-('Suluboya Workshop', 'Profesyonel suluboya teknikleri.', '2026-06-02 14:00:00', 15, 380),
-('Heykel Temel Kurs', 'Kil ile heykel yapımının temelleri.', '2026-06-10 10:00:00', 12, 1200),
-('Fotoğraf & Sanat', 'Dijital arşivleme teknikleri.', '2026-06-18 13:00:00', 25, 280),
-('Dijital İllüstrasyon', 'Tablet ile dijital sanat üretimi.', '2026-07-05 11:00:00', 18, 650);
 
 -- Mock User (şifre: admin123)
 INSERT INTO Users (FullName, Email, PasswordHash, Role) VALUES 
