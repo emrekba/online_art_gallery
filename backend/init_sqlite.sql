@@ -28,6 +28,7 @@ CREATE TABLE Artworks (
     ImageURL TEXT,
     ViewCount INTEGER DEFAULT 0,
     SellerID INTEGER REFERENCES Users(UserID),
+    DiscountRate INTEGER DEFAULT 0,
     CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -41,6 +42,7 @@ CREATE TABLE Events (
     SellerID INTEGER REFERENCES Users(UserID),
     EventType TEXT DEFAULT 'Atölye',
     DurationDays INTEGER DEFAULT 3,
+    DiscountRate INTEGER DEFAULT 0,
     CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -50,7 +52,9 @@ CREATE TABLE Reservations (
     EventID INTEGER REFERENCES Events(EventID),
     ParticipantCount INTEGER NOT NULL,
     TotalPrice REAL NOT NULL,
-    Status TEXT DEFAULT 'Active',
+    ReservationDate DATETIME,
+    PaymentMethod TEXT,
+    Status TEXT DEFAULT 'Pending',
     CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -86,7 +90,7 @@ CREATE TABLE Orders (
     OrderDate DATETIME DEFAULT CURRENT_TIMESTAMP,
     TotalAmount REAL NOT NULL,
     PaymentMethod TEXT NOT NULL,
-    Status TEXT DEFAULT 'Completed'
+    Status TEXT DEFAULT 'Pending'
 );
 
 CREATE TABLE OrderDetails (

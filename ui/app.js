@@ -22,7 +22,7 @@ async function fetchInitialData() {
     artworks = rawArtworks.map(a => ({
       id: a.ArtworkID, artistId: a.ArtistID, title: a.Title, category: a.Category,
       price: a.Price, status: a.StockStatus, rating: a.AvgRating ? Math.round(a.AvgRating * 10) / 10 : 0, reviews: a.ReviewCount || 0, likes: 142,
-      viewCount: a.ViewCount || 0, gradient: a.ImageURL, sellerName: a.SellerName
+      viewCount: a.ViewCount || 0, gradient: a.ImageURL, sellerName: a.SellerName, DiscountRate: a.DiscountRate || 0
     }));
     
     const rawEvents = await eventsRes.json();
@@ -35,7 +35,7 @@ async function fetchInitialData() {
         id: e.EventID, title: e.Title, description: e.Description, date: e.EventDate,
         day: d.getDate().toString().padStart(2, '0'), month: months[d.getMonth()],
         baseCapacity: e.Capacity, capacity: e.Capacity * 21, registered: e.RegisteredCount || 0, price: e.Price, duration: e.DurationDays || 3,
-        type: type, gradient: colors[e.EventID % 3], rating: e.AvgRating ? Math.round(e.AvgRating * 10) / 10 : 0, reservations: e.RegisteredCount || 0, reviews: e.ReviewCount || 0, sellerName: e.SellerName
+        type: type, gradient: colors[e.EventID % 3], rating: e.AvgRating ? Math.round(e.AvgRating * 10) / 10 : 0, reservations: e.RegisteredCount || 0, reviews: e.ReviewCount || 0, sellerName: e.SellerName, DiscountRate: e.DiscountRate || 0
       };
     });
     
@@ -49,7 +49,7 @@ async function fetchInitialData() {
 
 
 // ===== STATE =====
-let state = { page:'home', catFilter:'Tümü', evtFilter:'Tümü', artSearch:'', evtSearch:'', favorites:new Set(), loggedIn:false, user:null, compareEvents:[], compareArtworks:[], compareType:null };
+let state = { page:'home', catFilter:'Tümü', evtFilter:'Tümü', artSearch:'', evtSearch:'', favorites:new Set(), loggedIn:false, user:null, compareEvents:[], compareArtworks:[], compareType:null, artDiscountOnly: false, evtDiscountOnly: false };
 let currentCheckoutArtwork = null;
 let currentCheckoutType = 'artwork'; // 'artwork' | 'event'
 let currentCheckoutReservationData = null;
@@ -107,7 +107,15 @@ function artworkCard(a) {
       <p class="card-artist">${artist ? artist.name : (a.sellerName || '')}</p>
     </div>
     <div class="card-footer">
-      <span class="card-price">₺${a.price.toLocaleString('tr-TR')}</span>
+      <div style="display:flex; align-items:center; gap:8px;">
+        ${(a.DiscountRate || 0) > 0 ? `
+          <span style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">%${a.DiscountRate}</span>
+          <span style="text-decoration: line-through; color: var(--text3); font-size: 0.85rem;">₺${a.price.toLocaleString('tr-TR')}</span>
+          <span class="card-price">₺${(a.price * (1 - a.DiscountRate/100)).toLocaleString('tr-TR')}</span>
+        ` : `
+          <span class="card-price">₺${a.price.toLocaleString('tr-TR')}</span>
+        `}
+      </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
         <span class="card-views" style="font-size:.75rem;color:var(--text3)">👁️ ${(a.viewCount || 0).toLocaleString('tr-TR')} görüntülenme</span>
         <span class="card-rating"><span class="star">★</span> ${a.rating} (${a.reviews})</span>
@@ -134,12 +142,20 @@ function eventCard(e) {
       <p style="margin-bottom: 8px;">${e.description}</p>
       <p style="font-size: 0.8rem; color: var(--accent); margin-bottom: 8px;">${e.sellerName || ''}</p>
       <div class="event-meta">
-        <span>👥 ${e.registered}/${e.capacity} (3 gün × 7 saat)</span>
+        <span>👥 ${e.registered}/${e.capacity} (${e.duration} gün × 7 saat)</span>
         <span>★ ${e.rating}</span>
       </div>
     </div>
     <div class="event-footer">
-      <span class="event-price">₺${e.price.toLocaleString('tr-TR')}</span>
+      <div style="display:flex; align-items:center; gap:8px;">
+        ${(e.DiscountRate || 0) > 0 ? `
+          <span style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: bold;">%${e.DiscountRate}</span>
+          <span style="text-decoration: line-through; color: var(--text3); font-size: 0.85rem;">₺${e.price.toLocaleString('tr-TR')}</span>
+          <span class="event-price">₺${(e.price * (1 - e.DiscountRate/100)).toLocaleString('tr-TR')}</span>
+        ` : `
+          <span class="event-price">₺${e.price.toLocaleString('tr-TR')}</span>
+        `}
+      </div>
       <div class="capacity-bar"><div class="capacity-fill" style="width:${pct}%"></div></div>
     </div>
   </div>`;
@@ -153,6 +169,9 @@ function renderArtworks() {
     const art = artists.find(ar => ar.id === a.artistId);
     return a.title.toLowerCase().includes(state.artSearch) || (art && art.name.toLowerCase().includes(state.artSearch));
   });
+  if (state.artDiscountOnly) {
+    list = list.filter(a => (a.DiscountRate || 0) > 0);
+  }
   const sort = document.getElementById('artwork-sort').value;
   if (sort === 'price-asc') list.sort((a,b) => a.price - b.price);
   else if (sort === 'price-desc') list.sort((a,b) => b.price - a.price);
@@ -165,6 +184,9 @@ function renderEvents() {
   let list = [...events];
   if (state.evtFilter !== 'Tümü') list = list.filter(e => e.type === state.evtFilter);
   if (state.evtSearch) list = list.filter(e => e.title.toLowerCase().includes(state.evtSearch));
+  if (state.evtDiscountOnly) {
+    list = list.filter(e => (e.DiscountRate || 0) > 0);
+  }
   document.getElementById('events-main-grid').innerHTML = list.length ? list.map(e => eventCard(e)).join('') : '<p style="color:var(--text3);padding:40px">Etkinlik bulunamadı.</p>';
 }
 
@@ -256,7 +278,17 @@ function openArtwork(id) {
     <h2 style="font-family:var(--font-display);font-size:1.8rem;margin:8px 0 4px">${a.title}</h2>
     <p style="color:var(--text2);margin-bottom:20px">Sanatçı: <strong>${artist ? artist.name : '-'}</strong></p>
     <div style="display:flex;gap:16px;align-items:center;margin-bottom:24px;flex-wrap:wrap">
-      <span style="font-size:1.6rem;font-weight:700;color:var(--gold)">₺${a.price.toLocaleString('tr-TR')}</span>
+      ${(a.DiscountRate || 0) > 0 ? `
+        <div style="display:flex; flex-direction:column;">
+          <span style="text-decoration:line-through; color:var(--text3); font-size:0.9rem;">₺${a.price.toLocaleString('tr-TR')}</span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="background: linear-gradient(135deg, #10b981, #059669); color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem; font-weight: bold;">%${a.DiscountRate}</span>
+            <span style="font-size:1.6rem;font-weight:700;color:var(--gold)">₺${(a.price * (1 - a.DiscountRate/100)).toLocaleString('tr-TR')}</span>
+          </div>
+        </div>
+      ` : `
+        <span style="font-size:1.6rem;font-weight:700;color:var(--gold)">₺${a.price.toLocaleString('tr-TR')}</span>
+      `}
       <span style="color:var(--text2)">★ ${a.rating} · ${a.reviews} yorum</span>
       <span style="color:var(--text2)">♥ ${a.likes} beğeni</span>
       <span style="color:var(--text2)">👁️ <span id="artwork-view-count-${id}">${a.viewCount.toLocaleString('tr-TR')}</span> görüntülenme</span>
@@ -575,7 +607,16 @@ async function openEvent(id) {
       <div style="background:var(--bg3);padding:14px;border-radius:10px">📅 <strong>Başlangıç</strong><br><span style="color:var(--text2)">${e.date}</span></div>
       <div style="background:var(--bg3);padding:14px;border-radius:10px">👥 <strong>Saat Başı Kapasite</strong><br><span style="color:var(--text2)">${e.baseCapacity} kişi</span></div>
       <div style="background:var(--bg3);padding:14px;border-radius:10px">★ <strong>Puan</strong><br><span style="color:var(--gold)">${e.rating}/5.0</span></div>
-      <div style="background:var(--bg3);padding:14px;border-radius:10px">💰 <strong>Ücret</strong><br><span style="color:var(--gold)">₺${e.price.toLocaleString('tr-TR')}/kişi</span></div>
+      <div style="background:var(--bg3);padding:14px;border-radius:10px">
+        💰 <strong>Ücret</strong><br>
+        ${(e.DiscountRate || 0) > 0 ? `
+          <span style="text-decoration:line-through; color:var(--text3); font-size:0.8rem;">₺${e.price.toLocaleString('tr-TR')}</span>
+          <span style="color:#10b981; font-weight:bold; font-size:0.85rem;">-%${e.DiscountRate}</span><br>
+          <span style="color:var(--gold); font-weight:bold;">₺${(e.price * (1 - e.DiscountRate/100)).toLocaleString('tr-TR')}/kişi</span>
+        ` : `
+          <span style="color:var(--gold); font-weight:bold;">₺${e.price.toLocaleString('tr-TR')}/kişi</span>
+        `}
+      </div>
     </div>
     <div style="margin-bottom:20px; background:var(--bg3); padding:16px; border-radius:10px; border:1px solid var(--border);">
         <label style="font-weight:600; display:block; margin-bottom:10px;">📅 Tarih Seçin:</label>
@@ -905,7 +946,20 @@ function buyArtwork(id) {
       document.getElementById('checkout-coupon').value = '';
       document.getElementById('coupon-message').innerHTML = '';
       
-      let priceHtml = `Toplam Tutar: <strong style="color:var(--gold)">₺${a.price.toLocaleString('tr-TR')}</strong>`;
+      let basePrice = a.price;
+      if (a.DiscountRate > 0) {
+          basePrice = a.price * (1 - a.DiscountRate / 100);
+      }
+
+      let priceHtml = `Toplam Tutar: <strong style="color:var(--gold)">₺${basePrice.toLocaleString('tr-TR')}</strong>`;
+      if (a.DiscountRate > 0) {
+          priceHtml = `
+            <span style="text-decoration:line-through; opacity:0.6; font-size:0.9rem;">₺${a.price.toLocaleString('tr-TR')}</span>
+            <strong style="color:#10b981; font-size:0.85rem; margin-right:8px;">%${a.DiscountRate} İndirim</strong>
+            <strong style="color:var(--gold)">₺${basePrice.toLocaleString('tr-TR')}</strong>
+          `;
+      }
+
       if(specialOffer && specialOffer.ArtworkID === id) {
           priceHtml = `<span style="text-decoration:line-through; opacity:0.6; font-size:0.9rem;">₺${specialOffer.OriginalPrice.toLocaleString('tr-TR')}</span> <strong style="color:#4ade80;">%15 Özel İndirim -> ₺${specialOffer.DiscountedPrice.toLocaleString('tr-TR')}</strong>`;
       }
@@ -936,7 +990,11 @@ async function reserveEvent(id) {
       return;
   }
   
-  const totalPrice = e.price * count;
+  let unitPrice = e.price;
+  if (e.DiscountRate > 0) {
+      unitPrice = e.price * (1 - e.DiscountRate / 100);
+  }
+  const totalPrice = unitPrice * count;
   currentCheckoutType = 'event';
   currentCheckoutReservationData = {
       user_id: state.user.id,
@@ -957,9 +1015,14 @@ async function reserveEvent(id) {
   
   document.getElementById('checkout-summary').innerHTML = `
     <h4>${e.title} Rezervasyonu</h4>
-    <p style="color:var(--text2); margin-top:4px">Tarih & Saat: ${dateStr}</p>
-    <p style="color:var(--text2); margin-top:4px">Kişi Sayısı: ${count}</p>
-    <p style="margin-top:12px; font-size:1.2rem;">Toplam Tutar: <strong style="color:var(--gold)">₺${totalPrice.toLocaleString('tr-TR')}</strong></p>
+    <p style="color:var(--text2); margin-top:4px">Tarih: ${dateStr} | Kişi: ${count}</p>
+    <p style="margin-top:12px; font-size:1.2rem;">
+        ${e.DiscountRate > 0 ? `
+            <span style="text-decoration:line-through; opacity:0.6; font-size:0.9rem;">₺${(e.price * count).toLocaleString('tr-TR')}</span>
+            <span style="color:#10b981; font-size:0.85rem; margin-right:8px;">%${e.DiscountRate} İndirim</span>
+        ` : ''}
+        Toplam Tutar: <strong style="color:var(--gold)">₺${totalPrice.toLocaleString('tr-TR')}</strong>
+    </p>
   `;
   
   closeModal('event-modal');
@@ -1573,11 +1636,21 @@ document.addEventListener('DOMContentLoaded', () => {
           if(data.success) {
               appliedCoupon = data.coupon;
               let discountStr = '';
-              let newPrice = currentCheckoutType === 'artwork' ? currentCheckoutArtwork.price : currentCheckoutReservationData.base_price;
+              let basePrice = 0;
               
-              if(currentCheckoutType === 'artwork' && specialOffer && specialOffer.ArtworkID === currentCheckoutArtwork.id) {
-                  newPrice = specialOffer.DiscountedPrice;
+              if (currentCheckoutType === 'artwork') {
+                  basePrice = currentCheckoutArtwork.price;
+                  if (currentCheckoutArtwork.DiscountRate > 0) {
+                      basePrice = basePrice * (1 - currentCheckoutArtwork.DiscountRate / 100);
+                  }
+                  if(specialOffer && specialOffer.ArtworkID === currentCheckoutArtwork.id) {
+                      basePrice = specialOffer.DiscountedPrice;
+                  }
+              } else {
+                  basePrice = currentCheckoutReservationData.base_price; // base_price already includes discount in reserveEvent
               }
+
+              let newPrice = basePrice;
               
               if(appliedCoupon.DiscountType === 'Percent') {
                   discountStr = `%${appliedCoupon.DiscountValue} İndirim`;
@@ -1709,6 +1782,16 @@ document.addEventListener('DOMContentLoaded', () => {
     renderArtworks();
   });
 
+  document.getElementById('art-discount-toggle').addEventListener('change', (e) => {
+      state.artDiscountOnly = e.target.checked;
+      renderArtworks();
+  });
+
+  document.getElementById('evt-discount-toggle').addEventListener('change', (e) => {
+      state.evtDiscountOnly = e.target.checked;
+      renderEvents();
+  });
+
   // Event type filters
   document.getElementById('event-type-filters').addEventListener('click', e => {
     if (!e.target.classList.contains('chip')) return;
@@ -1795,12 +1878,14 @@ async function deleteSavedComparison(id) {
 async function loadSellerDashboard() {
     if (!state.loggedIn || state.user.role !== 'Seller') return;
     try {
-        const [artworksRes, eventsRes] = await Promise.all([
+        const [artworksRes, eventsRes, salesRes] = await Promise.all([
             fetch(`${API_URL}/seller/artworks/${state.user.id}`),
-            fetch(`${API_URL}/seller/events/${state.user.id}`)
+            fetch(`${API_URL}/seller/events/${state.user.id}`),
+            fetch(`${API_URL}/seller/sales/${state.user.id}`)
         ]);
         const artworksData = await artworksRes.json();
         const eventsData = await eventsRes.json();
+        const salesData = await salesRes.json();
 
         if (artworksData.success) {
             const addCardHtml = `
@@ -1819,7 +1904,8 @@ async function loadSellerDashboard() {
                     </div>
                     <div style="text-align:right; display:flex; flex-direction:column; gap:8px;">
                         <span style="font-weight:bold; color:var(--gold);">₺${a.Price.toLocaleString('tr-TR')}</span>
-                        <button class="btn-outline" style="padding:4px 8px; font-size:0.8rem; margin-bottom:4px;" onclick="openEditArtworkModal(${a.ArtworkID}, \`${a.Title.replace(/`/g, '')}\`, \`${a.Category}\`, ${a.Price}, \`${a.ImageURL}\`)">Düzenle</button>
+                        ${a.DiscountRate > 0 ? `<span style="font-size:0.75rem; color:#10b981;">%${a.DiscountRate} İndirim</span>` : ''}
+                        <button class="btn-outline" style="padding:4px 8px; font-size:0.8rem; margin-bottom:4px;" onclick="openEditArtworkModal(${a.ArtworkID}, \`${a.Title.replace(/`/g, '')}\`, \`${a.Category}\`, ${a.Price}, \`${a.ImageURL}\`, ${a.DiscountRate || 0})">Düzenle</button>
                         <button class="btn-outline" style="padding:4px 8px; font-size:0.8rem; color:#ef4444; border-color:#ef4444;" onclick="deleteSellerArtwork(${a.ArtworkID})">Sil</button>
                     </div>
                 </div>
@@ -1841,7 +1927,8 @@ async function loadSellerDashboard() {
                     </div>
                     <div style="text-align:right; display:flex; flex-direction:column; gap:8px;">
                         <span style="font-weight:bold; color:var(--gold);">₺${e.Price.toLocaleString('tr-TR')}</span>
-                        <button class="btn-outline" style="padding:4px 8px; font-size:0.8rem; margin-bottom:4px;" onclick="openEditEventModal(${e.EventID}, \`${e.Title.replace(/`/g, '')}\`, \`${e.Description.replace(/`/g, '')}\`, \`${e.EventDate}\`, ${e.Capacity}, ${e.Price}, \`${e.EventType || 'Atölye'}\`, ${e.DurationDays || 3})">Düzenle</button>
+                        ${e.DiscountRate > 0 ? `<span style="font-size:0.75rem; color:#10b981;">%${e.DiscountRate} İndirim</span>` : ''}
+                        <button class="btn-outline" style="padding:4px 8px; font-size:0.8rem; margin-bottom:4px;" onclick="openEditEventModal(${e.EventID}, \`${e.Title.replace(/`/g, '')}\`, \`${e.Description.replace(/`/g, '')}\`, \`${e.EventDate}\`, ${e.Capacity}, ${e.Price}, \`${e.EventType || 'Atölye'}\`, ${e.DurationDays || 3}, ${e.DiscountRate || 0})">Düzenle</button>
                         <button class="btn-outline" style="padding:4px 8px; font-size:0.8rem; color:#ef4444; border-color:#ef4444;" onclick="deleteSellerEvent(${e.EventID})">Sil</button>
                     </div>
                 </div>
@@ -1849,8 +1936,82 @@ async function loadSellerDashboard() {
             document.getElementById('seller-events-list').innerHTML = addEventCardHtml + evtHtml;
         }
 
+        if (salesData.success) {
+            // Artwork Sales
+            const artSalesHtml = salesData.artwork_sales.map(s => `
+                <div style="background:var(--bg3); padding:16px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; border:1px solid ${s.Status === 'Pending' ? 'var(--accent)' : 'var(--border)'}">
+                    <div>
+                        <h4 style="margin:0 0 4px 0">${s.ArtworkTitle}</h4>
+                        <p style="margin:0; font-size:0.85rem; color:var(--text2);">Müşteri: ${s.CustomerName} | Tarih: ${s.OrderDate.split(' ')[0]}</p>
+                        <p style="margin:4px 0 0 0; font-size:0.85rem;">
+                            Durum: <span style="color:${s.Status === 'Pending' ? 'var(--gold)' : s.Status === 'Completed' ? '#10b981' : '#ef4444'}; font-weight:600;">${s.Status === 'Pending' ? 'Onay Bekliyor' : s.Status === 'Completed' ? 'Tamamlandı' : 'Reddedildi'}</span>
+                        </p>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-weight:bold; color:var(--gold); margin-bottom:8px;">₺${s.TotalAmount.toLocaleString('tr-TR')}</div>
+                        ${s.Status === 'Pending' ? `
+                            <div style="display:flex; gap:8px;">
+                                <button class="btn-primary" style="padding:4px 12px; font-size:0.8rem;" onclick="updateSaleStatus('artwork', ${s.OrderID}, 'Completed')">Onayla</button>
+                                <button class="btn-outline" style="padding:4px 12px; font-size:0.8rem; color:#ef4444; border-color:#ef4444;" onclick="updateSaleStatus('artwork', ${s.OrderID}, 'Rejected')">Reddet</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('') || '<p style="color:var(--text3); font-size:0.9rem;">Henüz eser satışı yok.</p>';
+            document.getElementById('seller-artwork-sales-list').innerHTML = artSalesHtml;
+
+            // Event Reservations
+            const evtSalesHtml = salesData.event_sales.map(s => `
+                <div style="background:var(--bg3); padding:16px; border-radius:8px; display:flex; justify-content:space-between; align-items:center; border:1px solid ${s.Status === 'Pending' ? 'var(--accent)' : 'var(--border)'}">
+                    <div>
+                        <h4 style="margin:0 0 4px 0">${s.EventTitle}</h4>
+                        <p style="margin:0; font-size:0.85rem; color:var(--text2);">Müşteri: ${s.CustomerName} | Randevu: ${s.ReservationDate}</p>
+                        <p style="margin:4px 0 0 0; font-size:0.85rem;">
+                            Kişi: ${s.ParticipantCount} | Durum: <span style="color:${s.Status === 'Pending' ? 'var(--gold)' : s.Status === 'Active' ? '#10b981' : '#ef4444'}; font-weight:600;">${s.Status === 'Pending' ? 'Onay Bekliyor' : s.Status === 'Active' ? 'Onaylandı' : 'Reddedildi'}</span>
+                        </p>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-weight:bold; color:var(--gold); margin-bottom:8px;">₺${s.TotalPrice.toLocaleString('tr-TR')}</div>
+                        ${s.Status === 'Pending' ? `
+                            <div style="display:flex; gap:8px;">
+                                <button class="btn-primary" style="padding:4px 12px; font-size:0.8rem;" onclick="updateSaleStatus('event', ${s.ReservationID}, 'Active')">Onayla</button>
+                                <button class="btn-outline" style="padding:4px 12px; font-size:0.8rem; color:#ef4444; border-color:#ef4444;" onclick="updateSaleStatus('event', ${s.ReservationID}, 'Rejected')">Reddet</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('') || '<p style="color:var(--text3); font-size:0.9rem;">Henüz rezervasyon yok.</p>';
+            document.getElementById('seller-event-sales-list').innerHTML = evtSalesHtml;
+        }
+
     } catch (err) {
         console.error(err);
+    }
+}
+
+async function updateSaleStatus(type, id, status) {
+    const actionText = status === 'Rejected' ? 'reddetmek' : 'onaylamak';
+    if (!confirm(`Bu işlemi ${actionText} istediğinize emin misiniz?`)) return;
+
+    try {
+        const res = await fetch(`${API_URL}/seller/sales/status`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                seller_id: state.user.id,
+                type, id, status
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('İşlem başarıyla tamamlandı', 'success');
+            loadSellerDashboard();
+        } else {
+            showToast(data.message || 'Bir hata oluştu', 'error');
+        }
+    } catch (err) {
+        console.error(err);
+        showToast('Bağlantı hatası', 'error');
     }
 }
 
@@ -1859,6 +2020,7 @@ async function submitNewArtwork() {
     const category = document.getElementById('add-art-category').value;
     const price = parseInt(document.getElementById('add-art-price').value);
     const image_url = document.getElementById('add-art-image').value;
+    const discount_rate = parseInt(document.getElementById('add-art-discount').value) || 0;
 
     if (!title || !category || isNaN(price) || !image_url) {
         showToast('Lütfen tüm alanları doldurun.', 'error');
@@ -1871,7 +2033,7 @@ async function submitNewArtwork() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 seller_id: state.user.id,
-                title, category, price, image_url
+                title, category, price, image_url, discount_rate
             })
         });
         const data = await res.json();
@@ -1899,6 +2061,7 @@ async function submitNewEvent() {
 
     const event_type = document.getElementById('add-evt-type').value;
     const duration_days = parseInt(document.getElementById('add-evt-duration').value) || 3;
+    const discount_rate = parseInt(document.getElementById('add-evt-discount').value) || 0;
 
     if (!title || !description || !event_date || isNaN(capacity) || isNaN(price)) {
         showToast('Lütfen tüm alanları doldurun.', 'error');
@@ -1913,7 +2076,7 @@ async function submitNewEvent() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 seller_id: state.user.id,
-                title, description, event_date: formatted_date, capacity, price, event_type, duration_days
+                title, description, event_date: formatted_date, capacity, price, event_type, duration_days, discount_rate
             })
         });
         const data = await res.json();
@@ -1935,12 +2098,13 @@ async function submitNewEvent() {
     }
 }
 
-function openEditArtworkModal(id, title, category, price, image) {
+function openEditArtworkModal(id, title, category, price, image, discountRate) {
     document.getElementById('edit-art-id').value = id;
     document.getElementById('edit-art-title').value = title;
     document.getElementById('edit-art-category').value = category;
     document.getElementById('edit-art-price').value = price;
     document.getElementById('edit-art-image').value = image;
+    document.getElementById('edit-art-discount').value = discountRate || 0;
     document.getElementById('edit-artwork-modal').classList.add('open');
 }
 
@@ -1950,6 +2114,7 @@ async function submitEditArtwork() {
     const category = document.getElementById('edit-art-category').value;
     const price = parseInt(document.getElementById('edit-art-price').value);
     const image_url = document.getElementById('edit-art-image').value;
+    const discount_rate = parseInt(document.getElementById('edit-art-discount').value) || 0;
 
     if (!title || !category || isNaN(price) || !image_url) {
         showToast('Lütfen tüm alanları doldurun.', 'error');
@@ -1962,7 +2127,7 @@ async function submitEditArtwork() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 seller_id: state.user.id,
-                title, category, price, image_url
+                title, category, price, image_url, discount_rate
             })
         });
         const data = await res.json();
@@ -1996,7 +2161,7 @@ async function deleteSellerArtwork(id) {
     }
 }
 
-function openEditEventModal(id, title, desc, dateStr, capacity, price, eventType, durationDays) {
+function openEditEventModal(id, title, desc, dateStr, capacity, price, eventType, durationDays, discountRate) {
     document.getElementById('edit-evt-id').value = id;
     document.getElementById('edit-evt-title').value = title;
     document.getElementById('edit-evt-desc').value = desc;
@@ -2005,6 +2170,7 @@ function openEditEventModal(id, title, desc, dateStr, capacity, price, eventType
     document.getElementById('edit-evt-price').value = price;
     document.getElementById('edit-evt-type').value = eventType;
     document.getElementById('edit-evt-duration').value = durationDays;
+    document.getElementById('edit-evt-discount').value = discountRate || 0;
     document.getElementById('edit-event-modal').classList.add('open');
 }
 
@@ -2017,6 +2183,7 @@ async function submitEditEvent() {
     const price = parseInt(document.getElementById('edit-evt-price').value);
     const event_type = document.getElementById('edit-evt-type').value;
     const duration_days = parseInt(document.getElementById('edit-evt-duration').value) || 3;
+    const discount_rate = parseInt(document.getElementById('edit-evt-discount').value) || 0;
 
     if (!title || !description || !event_date || isNaN(capacity) || isNaN(price)) {
         showToast('Lütfen tüm alanları doldurun.', 'error');
@@ -2035,7 +2202,7 @@ async function submitEditEvent() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 seller_id: state.user.id,
-                title, description, event_date: formatted_date, capacity, price, event_type, duration_days
+                title, description, event_date: formatted_date, capacity, price, event_type, duration_days, discount_rate
             })
         });
         const data = await res.json();

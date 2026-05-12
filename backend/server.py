@@ -55,11 +55,29 @@ def init_db():
         cur.execute('ALTER TABLE Artworks ADD COLUMN SellerID INTEGER REFERENCES Users(UserID)')
         conn.commit()
 
+    cur.execute("PRAGMA table_info(Artworks)")
+    columns = {row[1] for row in cur.fetchall()}
+    if 'DiscountRate' not in columns:
+        print("Migration: Artworks tablosuna DiscountRate kolonu ekleniyor...")
+        cur.execute('ALTER TABLE Artworks ADD COLUMN DiscountRate INTEGER DEFAULT 0')
+        conn.commit()
+
     cur.execute("PRAGMA table_info(Events)")
     columns = {row[1] for row in cur.fetchall()}
-    if 'SellerID' not in columns:
-        print("Migration: Events tablosuna SellerID kolonu ekleniyor...")
-        cur.execute('ALTER TABLE Events ADD COLUMN SellerID INTEGER REFERENCES Users(UserID)')
+    if 'DiscountRate' not in columns:
+        print("Migration: Events tablosuna DiscountRate kolonu ekleniyor...")
+        cur.execute('ALTER TABLE Events ADD COLUMN DiscountRate INTEGER DEFAULT 0')
+        conn.commit()
+
+    cur.execute("PRAGMA table_info(Reservations)")
+    columns = {row[1] for row in cur.fetchall()}
+    if 'ReservationDate' not in columns:
+        print("Migration: Reservations tablosuna ReservationDate kolonu ekleniyor...")
+        cur.execute('ALTER TABLE Reservations ADD COLUMN ReservationDate DATETIME')
+        conn.commit()
+    if 'PaymentMethod' not in columns:
+        print("Migration: Reservations tablosuna PaymentMethod kolonu ekleniyor...")
+        cur.execute('ALTER TABLE Reservations ADD COLUMN PaymentMethod TEXT')
         conn.commit()
 
     conn.close()
@@ -262,13 +280,15 @@ def create_order():
     is_special_offer = data.get('is_special_offer', False)
     
     conn = get_db_connection()
-    artwork = conn.execute('SELECT Price FROM Artworks WHERE ArtworkID = ?', (artwork_id,)).fetchone()
+    artwork = conn.execute('SELECT Price, DiscountRate FROM Artworks WHERE ArtworkID = ?', (artwork_id,)).fetchone()
     
     if not artwork:
         conn.close()
         return jsonify({'success': False, 'message': 'Eser bulunamadı'}), 404
         
-    final_price = artwork['Price']
+    price = artwork['Price']
+    discount_rate = artwork['DiscountRate'] or 0
+    final_price = price * (1 - discount_rate / 100)
     
     # Özel teklif %15 indirimi uygula
     if is_special_offer:
@@ -284,7 +304,7 @@ def create_order():
         
     cursor = conn.cursor()
     cursor.execute('INSERT INTO Orders (UserID, TotalAmount, PaymentMethod, Status) VALUES (?, ?, ?, ?)',
-                   (user_id, final_price, payment_method, 'Completed'))
+                   (user_id, final_price, payment_method, 'Pending'))
     order_id = cursor.lastrowid
     
     cursor.execute('INSERT INTO OrderDetails (OrderID, ArtworkID, Price) VALUES (?, ?, ?)',
@@ -304,7 +324,7 @@ def create_reservation():
     participant_count = data.get('participant_count', 1)
     
     conn = get_db_connection()
-    event = conn.execute('SELECT Price, Capacity FROM Events WHERE EventID = ?', (event_id,)).fetchone()
+    event = conn.execute('SELECT Price, Capacity, DiscountRate FROM Events WHERE EventID = ?', (event_id,)).fetchone()
     
     # Seçilen tarih+saat için mevcut kayıt sayısını kontrol et
     if reservation_date:
@@ -318,10 +338,13 @@ def create_reservation():
             return jsonify({'success': False, 'message': 'Seçilen saat için yeterli kontenjan yok!'}), 400
     
     payment_method = data.get('payment_method', 'Kredi Kartı')
-    total_price = event['Price'] * participant_count
+    price = event['Price']
+    discount_rate = event['DiscountRate'] or 0
+    final_unit_price = price * (1 - discount_rate / 100)
+    total_price = final_unit_price * participant_count
     
-    conn.execute('INSERT INTO Reservations (UserID, EventID, ParticipantCount, TotalPrice, ReservationDate, PaymentMethod) VALUES (?, ?, ?, ?, ?, ?)',
-                 (user_id, event_id, participant_count, total_price, reservation_date, payment_method))
+    conn.execute('INSERT INTO Reservations (UserID, EventID, ParticipantCount, TotalPrice, ReservationDate, PaymentMethod, Status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                 (user_id, event_id, participant_count, total_price, reservation_date, payment_method, 'Pending'))
     conn.commit()
     conn.close()
     
@@ -784,11 +807,12 @@ def add_seller_artwork():
     category = data.get('category')
     price = data.get('price')
     image_url = data.get('image_url')
+    discount_rate = data.get('discount_rate', 0)
     
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('INSERT INTO Artworks (Title, Category, Price, ImageURL, SellerID) VALUES (?, ?, ?, ?, ?)',
-                   (title, category, price, image_url, seller_id))
+    cursor.execute('INSERT INTO Artworks (Title, Category, Price, ImageURL, SellerID, DiscountRate) VALUES (?, ?, ?, ?, ?, ?)',
+                   (title, category, price, image_url, seller_id, discount_rate))
     conn.commit()
     conn.close()
     return jsonify({'success': True, 'message': 'Eser eklendi'})
@@ -801,6 +825,7 @@ def edit_seller_artwork(artwork_id):
     category = data.get('category')
     price = data.get('price')
     image_url = data.get('image_url')
+    discount_rate = data.get('discount_rate', 0)
     
     conn = get_db_connection()
     # Verify ownership
@@ -809,8 +834,8 @@ def edit_seller_artwork(artwork_id):
         conn.close()
         return jsonify({'success': False, 'message': 'Yetkiniz yok veya eser bulunamadı'}), 403
 
-    conn.execute('UPDATE Artworks SET Title = ?, Category = ?, Price = ?, ImageURL = ? WHERE ArtworkID = ?',
-                   (title, category, price, image_url, artwork_id))
+    conn.execute('UPDATE Artworks SET Title = ?, Category = ?, Price = ?, ImageURL = ?, DiscountRate = ? WHERE ArtworkID = ?',
+                   (title, category, price, image_url, discount_rate, artwork_id))
     conn.commit()
     conn.close()
     return jsonify({'success': True, 'message': 'Eser güncellendi'})
@@ -833,11 +858,12 @@ def add_seller_event():
     price = data.get('price')
     event_type = data.get('event_type')
     duration_days = data.get('duration_days', 3)
+    discount_rate = data.get('discount_rate', 0)
     
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('INSERT INTO Events (Title, Description, EventDate, Capacity, Price, SellerID, EventType, DurationDays) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                   (title, description, event_date, capacity, price, seller_id, event_type, duration_days))
+    cursor.execute('INSERT INTO Events (Title, Description, EventDate, Capacity, Price, SellerID, EventType, DurationDays, DiscountRate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                   (title, description, event_date, capacity, price, seller_id, event_type, duration_days, discount_rate))
     conn.commit()
     conn.close()
     return jsonify({'success': True, 'message': 'Etkinlik eklendi'})
@@ -853,6 +879,7 @@ def edit_seller_event(event_id):
     price = data.get('price')
     event_type = data.get('event_type')
     duration_days = data.get('duration_days', 3)
+    discount_rate = data.get('discount_rate', 0)
     
     conn = get_db_connection()
     row = conn.execute('SELECT SellerID FROM Events WHERE EventID = ?', (event_id,)).fetchone()
@@ -860,8 +887,8 @@ def edit_seller_event(event_id):
         conn.close()
         return jsonify({'success': False, 'message': 'Yetkiniz yok veya etkinlik bulunamadı'}), 403
 
-    conn.execute('UPDATE Events SET Title = ?, Description = ?, EventDate = ?, Capacity = ?, Price = ?, EventType = ?, DurationDays = ? WHERE EventID = ?',
-                   (title, description, event_date, capacity, price, event_type, duration_days, event_id))
+    conn.execute('UPDATE Events SET Title = ?, Description = ?, EventDate = ?, Capacity = ?, Price = ?, EventType = ?, DurationDays = ?, DiscountRate = ? WHERE EventID = ?',
+                   (title, description, event_date, capacity, price, event_type, duration_days, discount_rate, event_id))
     conn.commit()
     conn.close()
     return jsonify({'success': True, 'message': 'Etkinlik güncellendi'})
@@ -893,6 +920,83 @@ def delete_seller_artwork(artwork_id):
     conn.commit()
     conn.close()
     return jsonify({'success': True, 'message': 'Eser silindi'})
+
+
+@app.route('/api/seller/sales/<int:user_id>', methods=['GET'])
+def get_seller_sales(user_id):
+    conn = get_db_connection()
+    
+    # Eser Satışları (Artwork Sales)
+    artwork_sales = conn.execute('''
+        SELECT o.OrderID, o.OrderDate, o.TotalAmount, o.Status, o.PaymentMethod,
+               a.Title as ArtworkTitle, a.Price as OriginalPrice, u.FullName as CustomerName, a.ArtworkID
+        FROM Orders o
+        JOIN OrderDetails od ON o.OrderID = od.OrderID
+        JOIN Artworks a ON od.ArtworkID = a.ArtworkID
+        JOIN Users u ON o.UserID = u.UserID
+        WHERE a.SellerID = ?
+        ORDER BY o.OrderDate DESC
+    ''', (user_id,)).fetchall()
+    
+    # Etkinlik Rezervasyonları (Event Reservations)
+    event_sales = conn.execute('''
+        SELECT r.ReservationID, r.ParticipantCount, r.TotalPrice, r.Status, r.ReservationDate, r.CreatedAt,
+               e.Title as EventTitle, e.Price as OriginalPrice, u.FullName as CustomerName, e.EventID
+        FROM Reservations r
+        JOIN Events e ON r.EventID = e.EventID
+        JOIN Users u ON r.UserID = u.UserID
+        WHERE e.SellerID = ?
+        ORDER BY r.CreatedAt DESC
+    ''', (user_id,)).fetchall()
+    
+    conn.close()
+    return jsonify({
+        'success': True,
+        'artwork_sales': [dict(ix) for ix in artwork_sales],
+        'event_sales': [dict(ix) for ix in event_sales]
+    })
+
+@app.route('/api/seller/sales/status', methods=['POST'])
+def update_sale_status():
+    data = request.json
+    seller_id = data.get('seller_id')
+    type = data.get('type') # 'artwork' veya 'event'
+    id = data.get('id') # OrderID veya ReservationID
+    status = data.get('status') # 'Completed', 'Rejected', 'Active', 'Cancelled'
+    
+    conn = get_db_connection()
+    
+    if type == 'artwork':
+        # Verify ownership
+        row = conn.execute('''
+            SELECT a.SellerID FROM Orders o
+            JOIN OrderDetails od ON o.OrderID = od.OrderID
+            JOIN Artworks a ON od.ArtworkID = a.ArtworkID
+            WHERE o.OrderID = ?
+        ''', (id,)).fetchone()
+        
+        if not row or row['SellerID'] != seller_id:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Yetkiniz yok'}), 403
+            
+        conn.execute('UPDATE Orders SET Status = ? WHERE OrderID = ?', (status, id))
+    else:
+        # Verify ownership
+        row = conn.execute('''
+            SELECT e.SellerID FROM Reservations r
+            JOIN Events e ON r.EventID = e.EventID
+            WHERE r.ReservationID = ?
+        ''', (id,)).fetchone()
+        
+        if not row or row['SellerID'] != seller_id:
+            conn.close()
+            return jsonify({'success': False, 'message': 'Yetkiniz yok'}), 403
+            
+        conn.execute('UPDATE Reservations SET Status = ? WHERE ReservationID = ?', (status, id))
+        
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'message': 'Durum güncellendi'})
 
 
 if __name__ == '__main__':
