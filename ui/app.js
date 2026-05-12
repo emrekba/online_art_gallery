@@ -67,7 +67,7 @@ function navigate(page) {
   window.scrollTo({ top:0, behavior:'smooth' });
   if (page === 'artworks') renderArtworks();
   if (page === 'events') renderEvents();
-  if (page === 'admin') animateKPIs();
+  if (page === 'admin') renderAdmin();
   if (page === 'profile') loadProfile();
   if (page === 'seller') loadSellerDashboard();
 }
@@ -171,7 +171,7 @@ function renderArtworks() {
     return a.title.toLowerCase().includes(state.artSearch) || (art && art.name.toLowerCase().includes(state.artSearch));
   });
   if (state.artDiscountOnly) {
-    list = list.filter(a => (a.DiscountRate || 0) > 0);
+    list = list.filter(a => (a.DiscountRate || 0) > 0 || (specialOffer && specialOffer.ArtworkID === a.id));
   }
   const sort = document.getElementById('artwork-sort').value;
   if (sort === 'price-asc') list.sort((a,b) => a.price - b.price);
@@ -193,6 +193,21 @@ function renderEvents() {
 
 // ===== ADMIN TABLES =====
 async function renderAdmin() {
+  // Fetch real stats
+  try {
+      const statsRes = await fetch(`${API_URL}/admin/stats`);
+      const statsData = await statsRes.json();
+      if(statsData.success) {
+          const s = statsData.stats;
+          document.querySelector('#kpi-users .kpi-value').dataset.target = s.users;
+          document.querySelector('#kpi-sold .kpi-value').dataset.target = s.sold;
+          document.querySelector('#kpi-reservations .kpi-value').dataset.target = s.reservations;
+          document.querySelector('#kpi-revenue .kpi-value').dataset.target = s.total_revenue;
+          document.querySelector('#kpi-event-revenue .kpi-value').dataset.target = s.event_revenue;
+          animateKPIs();
+      }
+  } catch(e) { console.error("Stats error:", e); }
+
   // Event stats
   document.getElementById('event-stats-body').innerHTML = events.map(e => {
     const pct = Math.round(e.registered / e.capacity * 100);
@@ -210,7 +225,7 @@ async function renderAdmin() {
       <td>₺${a.price.toLocaleString('tr-TR')}</td>
       <td><span class="status-badge available">Satışta</span></td>
       <td>👁️ ${(a.viewCount || 0).toLocaleString('tr-TR')}</td>
-      <td>♥ ${a.likes}</td><td>💬 ${a.reviews}</td>
+      <td>💬 ${a.reviews}</td>
       <td><span class="star-sm">★</span> ${a.rating}</td>
     </tr>`;
   }).join('');

@@ -1002,6 +1002,33 @@ def update_sale_status():
     return jsonify({'success': True, 'message': 'Durum güncellendi'})
 
 
+@app.route('/api/admin/stats', methods=['GET'])
+def get_admin_stats():
+    conn = get_db_connection()
+    try:
+        user_count = conn.execute('SELECT COUNT(*) FROM Users WHERE Role = "User"').fetchone()[0]
+        artwork_sold = conn.execute('SELECT COUNT(*) FROM Orders WHERE Status IN ("Approved", "Completed")').fetchone()[0]
+        active_reservations = conn.execute('SELECT COUNT(*) FROM Reservations WHERE Status IN ("Pending", "Approved")').fetchone()[0]
+        
+        art_revenue = conn.execute('SELECT SUM(TotalAmount) FROM Orders WHERE Status IN ("Approved", "Completed")').fetchone()[0] or 0
+        evt_revenue = conn.execute('SELECT SUM(TotalPrice) FROM Reservations WHERE Status IN ("Approved", "Completed")').fetchone()[0] or 0
+        total_revenue = art_revenue + evt_revenue
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'users': user_count,
+                'sold': artwork_sold,
+                'reservations': active_reservations,
+                'total_revenue': total_revenue,
+                'event_revenue': evt_revenue
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        conn.close()
+
 if __name__ == '__main__':
     init_db()
     print("Backend sunucusu 5000 portunda çalışıyor...")
