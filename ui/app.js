@@ -2104,6 +2104,7 @@ async function updateSaleStatus(type, id, status) {
 
 async function submitNewArtwork() {
     const title = document.getElementById('add-art-title').value;
+    const artist_name = document.getElementById('add-art-artist').value.trim();
     const category = document.getElementById('add-art-category').value;
     const price = parseInt(document.getElementById('add-art-price').value);
     const image_url = document.getElementById('add-art-image').value;
@@ -2120,13 +2121,14 @@ async function submitNewArtwork() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 seller_id: state.user.id,
-                title, category, price, image_url, discount_rate
+                title, artist_name, category, price, image_url, discount_rate
             })
         });
         const data = await res.json();
         if (data.success) {
             showToast('Eser başarıyla eklendi.', 'success');
             document.getElementById('add-art-title').value = '';
+            document.getElementById('add-art-artist').value = '';
             document.getElementById('add-art-price').value = '';
             closeModal('add-artwork-modal');
             loadSellerDashboard();

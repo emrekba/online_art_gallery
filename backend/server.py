@@ -807,15 +807,29 @@ def add_seller_artwork():
     data = request.json
     seller_id = data.get('seller_id')
     title = data.get('title')
+    artist_name = data.get('artist_name', '').strip()
     category = data.get('category')
     price = data.get('price')
     image_url = data.get('image_url')
     discount_rate = data.get('discount_rate', 0)
-    
+
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('INSERT INTO Artworks (Title, Category, Price, ImageURL, SellerID, DiscountRate) VALUES (?, ?, ?, ?, ?, ?)',
-                   (title, category, price, image_url, seller_id, discount_rate))
+
+    # Sanatçı adı girilmişse: bul veya oluştur
+    artist_id = None
+    if artist_name:
+        existing = conn.execute('SELECT ArtistID FROM Artists WHERE LOWER(Name) = LOWER(?)', (artist_name,)).fetchone()
+        if existing:
+            artist_id = existing['ArtistID']
+        else:
+            cursor.execute('INSERT INTO Artists (Name) VALUES (?)', (artist_name,))
+            artist_id = cursor.lastrowid
+
+    cursor.execute(
+        'INSERT INTO Artworks (Title, ArtistID, Category, Price, ImageURL, SellerID, DiscountRate) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        (title, artist_id, category, price, image_url, seller_id, discount_rate)
+    )
     conn.commit()
     conn.close()
     return jsonify({'success': True, 'message': 'Eser eklendi'})
