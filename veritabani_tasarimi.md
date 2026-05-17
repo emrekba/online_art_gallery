@@ -1,63 +1,78 @@
 # Online Sanat Galerisi ve Atölye Rezervasyon Sistemi - Veritabanı Tasarımı
 
-Aşağıda, 16 maddelik sistem gereksinimlerini karşılayacak olan ilişkisel veritabanı tabloları ve bu tabloların PostgreSQL/MySQL uyumlu SQL kodları (DDL) bulunmaktadır.
+Aşağıda sistemin mevcut SQLite veritabanı şeması ve tablo açıklamaları bulunmaktadır.
+
+---
 
 ## 1. Temel Tablolar (Varlıklar)
 
 ### `Users` (Kullanıcılar)
-Sisteme kayıt olan müşteriler, yöneticiler ve destek ekipleri bu tabloda tutulur.
+Sisteme kayıt olan tüm kullanıcılar bu tabloda tutulur.
 - **UserID** (PK)
 - **FullName**: Ad soyad
 - **Email**: Giriş için e-posta (Unique)
-- **PasswordHash**: Şifre
-- **Role**: Kullanıcı yetkisi ('Customer', 'Admin', 'GalleryManager')
+- **PasswordHash**: Scrypt algoritmasıyla hashlenmiş şifre
+- **Role**: Kullanıcı yetkisi — `'Customer'`, `'Admin'`, `'Seller'`
 - **CreatedAt**: Kayıt tarihi
 
 ### `Artists` (Sanatçılar)
-Eserlerin sahipleridir.
+Eserlere atanan sanatçı profilleri.
 - **ArtistID** (PK)
 - **Name**: Sanatçı adı
 - **Biography**: Sanatçı hakkında bilgi
-- **ProfileImage**: Fotoğraf URL
+- **ProfileImage**: Profil görseli (URL veya CSS gradient)
 
 ### `Artworks` (Eserler)
 Sergilenen veya satılan sanat eserleri.
 - **ArtworkID** (PK)
-- **ArtistID** (FK) -> `Artists`
+- **ArtistID** (FK → `Artists`): Eseri yapan sanatçı (opsiyonel)
+- **SellerID** (FK → `Users`): Eseri platforma ekleyen satıcı kullanıcı
 - **Title**: Eser adı
 - **Description**: Açıklama
-- **Category**: Kategori (Örn: Yağlı Boya, Heykel)
+- **Category**: Kategori (Yağlı Boya, Suluboya, Heykel, Dijital, Fotoğraf)
 - **Price**: Fiyat
-- **StockStatus**: Stok durumu (Satıldı / Satışta)
-- **ImageURL**: Eser görseli
+- **StockStatus**: Stok durumu (`'Available'`, `'Sold'`)
+- **ImageURL**: Eser görseli (URL veya CSS gradient)
+- **ViewCount**: Görüntülenme sayısı (varsayılan: 0)
+- **DiscountRate**: İndirim oranı % (varsayılan: 0)
+- **CreatedAt**: Eklenme tarihi
 
 ### `Events` (Etkinlikler / Atölyeler)
 Düzenlenen atölye ve etkinlikler.
 - **EventID** (PK)
+- **SellerID** (FK → `Users`): Etkinliği ekleyen satıcı kullanıcı
 - **Title**: Etkinlik adı
 - **Description**: Etkinlik detayı
 - **EventDate**: Tarih ve saat
-- **Capacity**: Toplam kontenjan
+- **Capacity**: Toplam kontenjan (kişi)
 - **Price**: Kişi başı ücret
+- **EventType**: Etkinlik türü (`'Atölye'`, `'Sergi'`, `'Workshop'`) — varsayılan `'Atölye'`
+- **DurationDays**: Süre (gün) — varsayılan 3
+- **DiscountRate**: İndirim oranı % (varsayılan: 0)
+- **CreatedAt**: Eklenme tarihi
 
 ---
 
 ## 2. İlişki ve İşlem Tabloları
 
 ### `Favorites` (Favoriler)
-Kullanıcıların beğendiği eserleri listeler. (Many-to-Many ilişkisi)
+Kullanıcıların beğendiği eserler. (Users ↔ Artworks arası N:M)
 - **FavoriteID** (PK)
-- **UserID** (FK) -> `Users`
-- **ArtworkID** (FK) -> `Artworks`
+- **UserID** (FK → `Users`)
+- **ArtworkID** (FK → `Artworks`)
+- *UNIQUE(UserID, ArtworkID)*
 
 ### `Reservations` (Rezervasyonlar)
-Atölye ve etkinlikler için alınan kayıtlar.
+Etkinlikler için alınan katılım kayıtları.
 - **ReservationID** (PK)
-- **UserID** (FK) -> `Users`
-- **EventID** (FK) -> `Events`
+- **UserID** (FK → `Users`)
+- **EventID** (FK → `Events`)
 - **ParticipantCount**: Katılımcı sayısı
-- **TotalPrice**: Toplam ödenen/ödenecek tutar
-- **Status**: Durum ('Active', 'Updated', 'Cancelled')
+- **TotalPrice**: Toplam ödenen tutar
+- **ReservationDate**: Rezervasyon/oturum tarihi
+- **PaymentMethod**: Ödeme yöntemi (Kredi Kartı, Havale vb.)
+- **Status**: Durum (`'Active'`, `'Pending'`, `'Cancelled'`)
+- **CreatedAt**: Oluşturulma tarihi
 
 ### `Orders` ve `OrderDetails` (Siparişler)
 Eser satın alımları için.
@@ -66,142 +81,179 @@ Eser satın alımları için.
 
 ### `Coupons` (İndirim Kuponları)
 - **CouponID** (PK)
-- **Code**: Kupon kodu (Örn: SANAT20)
-- **DiscountPercent**: Yüzdelik indirim
-- **ValidUntil**: Son kullanma tarihi
+- **Code**: Kupon kodu — Unique (Örn: KTU10)
+- **DiscountType**: İndirim türü (`'Percent'`, `'Fixed'`)
+- **DiscountValue**: İndirim miktarı (% veya TL)
+- **IsActive**: Aktif mi? (1 = Aktif, 0 = Pasif)
+
+### `SavedComparisons` (Kaydedilen Karşılaştırmalar)
+Kullanıcıların kaydettiği eser/etkinlik karşılaştırmaları.
+- **ComparisonID** (PK)
+- **UserID** (FK → `Users`)
+- **EntityType**: Karşılaştırılan varlık türü (`'Artwork'`, `'Event'`)
+- **EntityIDs**: Virgülle ayrılmış ID listesi (Örn: `"3,7,12"`)
+- **CreatedAt**: Kaydetme tarihi
 
 ---
 
 ## 3. Etkileşim ve Geri Bildirim Tabloları
 
 ### `Comments` (Yorumlar)
-Hem eserlere hem de etkinliklere yapılabilen yorumlar. "Yanıt Verme" özelliği için `ParentCommentID` kullanılır.
+Hem eserlere hem etkinliklere yapılabilen yorumlar. `ParentCommentID` ile admin yanıtları desteklenir.
 - **CommentID** (PK)
-- **UserID** (FK) -> `Users`
-- **EntityType**: Neye yorum yapıldığı ('Artwork', 'Event')
+- **UserID** (FK → `Users`)
+- **EntityType**: `'Artwork'` veya `'Event'`
 - **EntityID**: Eserin veya Etkinliğin ID'si
 - **Content**: Yorum metni
-- **Rating**: 1-5 arası puan
-- **ParentCommentID** (FK - Self Join): Eğer bir yönetici yanıtlarsa bu doludur.
+- **Rating**: 1–5 arası puan (NULL ise puan verilmemiş)
+- **ParentCommentID** (FK → `Comments`): Admin yanıtı için self-join
+- **CreatedAt**: Yorum tarihi
 
 ### `CommentVotes` (Yorum Değerlendirmeleri)
 Yorumlara verilen "Faydalı Buldum" oyları.
 - **VoteID** (PK)
-- **CommentID** (FK) -> `Comments`
-- **UserID** (FK) -> `Users`
-- **VoteType**: ('Helpful', 'NotHelpful')
+- **CommentID** (FK → `Comments`)
+- **UserID** (FK → `Users`)
+- **IsHelpful**: 1 = Faydalı, 0 = Faydasız
+- *UNIQUE(CommentID, UserID)*
 
 ### `SupportTickets` (Müşteri Destek)
-Kullanıcıların iletişim veya canlı destek talepleri.
+Kullanıcıların destek talepleri.
 - **TicketID** (PK)
-- **UserID** (FK) -> `Users`
+- **UserID** (FK → `Users`)
 - **Subject**: Konu
 - **Message**: Mesaj
-- **Status**: Durum ('Open', 'Closed')
+- **AdminResponse**: Yönetici yanıtı (NULL ise henüz yanıtlanmamış)
+- **Status**: Durum (`'Open'`, `'Closed'`)
+- **CreatedAt**: Tarih
 
 ---
 
-## Örnek SQL (DDL) Kodları
-
-Aşağıdaki SQL kodlarını kendi veritabanında çalıştırarak tabloları oluşturabilirsin:
+## Örnek SQL (SQLite DDL)
 
 ```sql
 CREATE TABLE Users (
-    UserID SERIAL PRIMARY KEY,
-    FullName VARCHAR(100) NOT NULL,
-    Email VARCHAR(150) UNIQUE NOT NULL,
-    PasswordHash VARCHAR(255) NOT NULL,
-    Role VARCHAR(50) DEFAULT 'Customer', -- Customer, Admin, GalleryManager
-    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    UserID INTEGER PRIMARY KEY AUTOINCREMENT,
+    FullName TEXT NOT NULL,
+    Email TEXT UNIQUE NOT NULL,
+    PasswordHash TEXT NOT NULL,
+    Role TEXT DEFAULT 'Customer', -- Customer, Admin, Seller
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE Artists (
-    ArtistID SERIAL PRIMARY KEY,
-    Name VARCHAR(100) NOT NULL,
+    ArtistID INTEGER PRIMARY KEY AUTOINCREMENT,
+    Name TEXT NOT NULL,
     Biography TEXT,
-    ProfileImage VARCHAR(255)
+    ProfileImage TEXT
 );
 
 CREATE TABLE Artworks (
-    ArtworkID SERIAL PRIMARY KEY,
-    ArtistID INT REFERENCES Artists(ArtistID),
-    Title VARCHAR(200) NOT NULL,
+    ArtworkID INTEGER PRIMARY KEY AUTOINCREMENT,
+    ArtistID INTEGER REFERENCES Artists(ArtistID),
+    SellerID INTEGER REFERENCES Users(UserID),
+    Title TEXT NOT NULL,
     Description TEXT,
-    Category VARCHAR(100),
-    Price DECIMAL(10, 2),
-    StockStatus VARCHAR(50) DEFAULT 'Available',
-    ImageURL VARCHAR(255),
-    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    Category TEXT,
+    Price REAL,
+    StockStatus TEXT DEFAULT 'Available',
+    ImageURL TEXT,
+    ViewCount INTEGER DEFAULT 0,
+    DiscountRate INTEGER DEFAULT 0,
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE Events (
-    EventID SERIAL PRIMARY KEY,
-    Title VARCHAR(200) NOT NULL,
+    EventID INTEGER PRIMARY KEY AUTOINCREMENT,
+    SellerID INTEGER REFERENCES Users(UserID),
+    Title TEXT NOT NULL,
     Description TEXT,
-    EventDate TIMESTAMP NOT NULL,
-    Capacity INT NOT NULL,
-    Price DECIMAL(10, 2) NOT NULL,
-    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    EventDate DATETIME NOT NULL,
+    Capacity INTEGER NOT NULL,
+    Price REAL NOT NULL,
+    EventType TEXT DEFAULT 'Atölye',
+    DurationDays INTEGER DEFAULT 3,
+    DiscountRate INTEGER DEFAULT 0,
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE Reservations (
-    ReservationID SERIAL PRIMARY KEY,
-    UserID INT REFERENCES Users(UserID),
-    EventID INT REFERENCES Events(EventID),
-    ParticipantCount INT NOT NULL,
-    TotalPrice DECIMAL(10, 2) NOT NULL,
-    Status VARCHAR(50) DEFAULT 'Active', -- Active, Cancelled
-    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ReservationID INTEGER PRIMARY KEY AUTOINCREMENT,
+    UserID INTEGER REFERENCES Users(UserID),
+    EventID INTEGER REFERENCES Events(EventID),
+    ParticipantCount INTEGER NOT NULL,
+    TotalPrice REAL NOT NULL,
+    ReservationDate DATETIME,
+    PaymentMethod TEXT,
+    Status TEXT DEFAULT 'Pending',
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE Favorites (
-    FavoriteID SERIAL PRIMARY KEY,
-    UserID INT REFERENCES Users(UserID),
-    ArtworkID INT REFERENCES Artworks(ArtworkID),
-    UNIQUE(UserID, ArtworkID) -- Bir kullanıcı bir eseri sadece bir kez favoriye ekleyebilir
+    FavoriteID INTEGER PRIMARY KEY AUTOINCREMENT,
+    UserID INTEGER REFERENCES Users(UserID),
+    ArtworkID INTEGER REFERENCES Artworks(ArtworkID),
+    UNIQUE(UserID, ArtworkID)
 );
 
 CREATE TABLE Comments (
-    CommentID SERIAL PRIMARY KEY,
-    UserID INT REFERENCES Users(UserID),
-    EntityType VARCHAR(50) NOT NULL, -- 'Artwork' veya 'Event'
-    EntityID INT NOT NULL,
+    CommentID INTEGER PRIMARY KEY AUTOINCREMENT,
+    UserID INTEGER REFERENCES Users(UserID),
+    EntityType TEXT NOT NULL,
+    EntityID INTEGER NOT NULL,
     Content TEXT NOT NULL,
-    Rating INT CHECK (Rating >= 1 AND Rating <= 5),
-    ParentCommentID INT REFERENCES Comments(CommentID), -- Yönetici yanıtları için
-    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    Rating INTEGER CHECK (Rating >= 1 AND Rating <= 5),
+    ParentCommentID INTEGER REFERENCES Comments(CommentID),
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE CommentVotes (
-    VoteID SERIAL PRIMARY KEY,
-    CommentID INT REFERENCES Comments(CommentID),
-    UserID INT REFERENCES Users(UserID),
-    IsHelpful BOOLEAN NOT NULL,
-    UNIQUE(CommentID, UserID) -- Bir yoruma sadece bir kez oy verilebilir
+    VoteID INTEGER PRIMARY KEY AUTOINCREMENT,
+    CommentID INTEGER REFERENCES Comments(CommentID),
+    UserID INTEGER REFERENCES Users(UserID),
+    IsHelpful INTEGER NOT NULL,
+    UNIQUE(CommentID, UserID)
 );
 
 CREATE TABLE Orders (
-    OrderID SERIAL PRIMARY KEY,
-    UserID INT REFERENCES Users(UserID),
-    OrderDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    TotalAmount DECIMAL(10, 2) NOT NULL,
-    PaymentMethod VARCHAR(50) NOT NULL,
-    Status VARCHAR(50) DEFAULT 'Completed'
+    OrderID INTEGER PRIMARY KEY AUTOINCREMENT,
+    UserID INTEGER REFERENCES Users(UserID),
+    OrderDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+    TotalAmount REAL NOT NULL,
+    PaymentMethod TEXT NOT NULL,
+    Status TEXT DEFAULT 'Pending'
 );
 
 CREATE TABLE OrderDetails (
-    OrderDetailID SERIAL PRIMARY KEY,
-    OrderID INT REFERENCES Orders(OrderID),
-    ArtworkID INT REFERENCES Artworks(ArtworkID),
-    Price DECIMAL(10, 2) NOT NULL
+    OrderDetailID INTEGER PRIMARY KEY AUTOINCREMENT,
+    OrderID INTEGER REFERENCES Orders(OrderID),
+    ArtworkID INTEGER REFERENCES Artworks(ArtworkID),
+    Price REAL NOT NULL
 );
 
 CREATE TABLE SupportTickets (
-    TicketID SERIAL PRIMARY KEY,
-    UserID INT REFERENCES Users(UserID),
-    Subject VARCHAR(200) NOT NULL,
+    TicketID INTEGER PRIMARY KEY AUTOINCREMENT,
+    UserID INTEGER REFERENCES Users(UserID),
+    Subject TEXT NOT NULL,
     Message TEXT NOT NULL,
-    Status VARCHAR(50) DEFAULT 'Open',
-    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    AdminResponse TEXT,
+    Status TEXT DEFAULT 'Open',
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE Coupons (
+    CouponID INTEGER PRIMARY KEY AUTOINCREMENT,
+    Code TEXT UNIQUE NOT NULL,
+    DiscountType TEXT NOT NULL,  -- 'Percent' veya 'Fixed'
+    DiscountValue REAL NOT NULL,
+    IsActive INTEGER DEFAULT 1
+);
+
+CREATE TABLE SavedComparisons (
+    ComparisonID INTEGER PRIMARY KEY AUTOINCREMENT,
+    UserID INTEGER REFERENCES Users(UserID),
+    EntityType TEXT NOT NULL,
+    EntityIDs TEXT NOT NULL,
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 ```

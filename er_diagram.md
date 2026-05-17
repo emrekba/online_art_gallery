@@ -1,8 +1,6 @@
 # Varlık-İlişki (E-R) Diyagramı
 
-Ödev raporunda ("Veritabanı Tasarımının Sunulması") istenen E-R diyagramını aşağıda bulabilirsin. Bu görselleştirme, tabloların birbirlerine nasıl bağlandığını (Foreign Key ve One-to-Many / Many-to-Many yapılarını) göstermektedir. 
-
-Raporuna eklemek için bu diyagramın ekran görüntüsünü alabilirsin.
+Aşağıdaki diyagram, projenin mevcut SQLite veritabanı şemasına göre hazırlanmıştır.
 
 ```mermaid
 erDiagram
@@ -12,129 +10,159 @@ erDiagram
     Users ||--o{ Comments : "Writes"
     Users ||--o{ CommentVotes : "Votes on"
     Users ||--o{ SupportTickets : "Opens"
-    
-    Artists ||--o{ Artworks : "Creates"
-    
+    Users ||--o{ SavedComparisons : "Saves"
+    Users ||--o{ Artworks : "Sells (SellerID)"
+    Users ||--o{ Events : "Organizes (SellerID)"
+
+    Artists ||--o{ Artworks : "Creates (ArtistID)"
+
     Artworks ||--o{ Favorites : "In"
     Artworks ||--o{ OrderDetails : "Part of"
-    
+
     Events ||--o{ Reservations : "Has"
-    
+
     Orders ||--o{ OrderDetails : "Contains"
-    
+
     Comments ||--o{ CommentVotes : "Receives"
-    Comments ||--o{ Comments : "Replies to"
+    Comments ||--o{ Comments : "Replied to"
 
     Users {
         int UserID PK
         string FullName
         string Email
         string PasswordHash
-        string Role
+        string Role "Customer | Admin | Seller"
         datetime CreatedAt
     }
-    
+
     Artists {
         int ArtistID PK
         string Name
         string Biography
         string ProfileImage
     }
-    
+
     Artworks {
         int ArtworkID PK
         int ArtistID FK
+        int SellerID FK
         string Title
         string Description
         string Category
-        decimal Price
+        real Price
         string StockStatus
         string ImageURL
+        int ViewCount
+        int DiscountRate
         datetime CreatedAt
     }
-    
+
     Events {
         int EventID PK
+        int SellerID FK
         string Title
         string Description
         datetime EventDate
         int Capacity
-        decimal Price
+        real Price
+        string EventType
+        int DurationDays
+        int DiscountRate
         datetime CreatedAt
     }
-    
+
     Favorites {
         int FavoriteID PK
         int UserID FK
         int ArtworkID FK
     }
-    
+
     Reservations {
         int ReservationID PK
         int UserID FK
         int EventID FK
         int ParticipantCount
-        decimal TotalPrice
+        real TotalPrice
+        datetime ReservationDate
+        string PaymentMethod
         string Status
         datetime CreatedAt
     }
-    
+
     Orders {
         int OrderID PK
         int UserID FK
         datetime OrderDate
-        decimal TotalAmount
+        real TotalAmount
         string PaymentMethod
         string Status
     }
-    
+
     OrderDetails {
         int OrderDetailID PK
         int OrderID FK
         int ArtworkID FK
-        decimal Price
+        real Price
     }
-    
+
     Comments {
         int CommentID PK
         int UserID FK
-        string EntityType
+        string EntityType "Artwork | Event"
         int EntityID
         string Content
         int Rating
         int ParentCommentID FK
         datetime CreatedAt
     }
-    
+
     CommentVotes {
         int VoteID PK
         int CommentID FK
         int UserID FK
-        boolean IsHelpful
+        int IsHelpful "1=Faydalı, 0=Faydasız"
     }
-    
+
     Coupons {
         int CouponID PK
         string Code
-        decimal DiscountPercent
-        datetime ValidUntil
+        string DiscountType "Percent | Fixed"
+        real DiscountValue
+        int IsActive
     }
-    
+
     SupportTickets {
         int TicketID PK
         int UserID FK
         string Subject
         string Message
+        string AdminResponse
         string Status
+        datetime CreatedAt
+    }
+
+    SavedComparisons {
+        int ComparisonID PK
+        int UserID FK
+        string EntityType "Artwork | Event"
+        string EntityIDs
         datetime CreatedAt
     }
 ```
 
-## Diyagramdaki İlişkilerin Açıklaması (Raporuna Ekleyebilirsin)
+---
 
-*   **Users - Reservations (1:N):** Bir kullanıcı birden fazla etkinlik rezervasyonu yapabilir ancak bir rezervasyon tek bir kullanıcıya aittir.
-*   **Users - Favorites - Artworks (N:M):** Çoktan çoğa bir ilişkidir. Bir kullanıcı birden fazla eseri favorileyebilir; bir eser birden fazla kullanıcı tarafından favorilenebilir. `Favorites` tablosu bu ilişkiyi bağlar.
-*   **Artists - Artworks (1:N):** Bir sanatçının birden fazla eseri olabilir fakat bir eserin yalnızca tek bir sanatçısı vardır.
-*   **Orders - OrderDetails - Artworks (1:N & N:1):** Bir sipariş içinde birden çok eser olabilir. `OrderDetails` (Sipariş Detayları) tablosu hangi siparişte hangi eserlerin olduğunu tutar.
-*   **Comments - CommentVotes (1:N):** Bir yorum, birden fazla kullanıcıdan "Faydalı" oyu alabilir.
-*   **Comments - Comments (1:N - Self Join):** Galerici bir yoruma yanıt verdiğinde, bu yanıt kendi içinde `Comments` tablosunda tutulur ancak `ParentCommentID` değeriyle asıl yoruma bağlanır.
+## İlişkilerin Açıklaması
+
+| İlişki | Tür | Açıklama |
+|--------|-----|----------|
+| **Users → Artworks** (SellerID) | 1:N | Bir satıcı kullanıcı birden fazla eser ekleyebilir. |
+| **Users → Events** (SellerID) | 1:N | Bir satıcı kullanıcı birden fazla etkinlik düzenleyebilir. |
+| **Artists → Artworks** (ArtistID) | 1:N | Bir sanatçının birden fazla eseri olabilir. Eserler satıcı tarafından eklenirken bir sanatçıya atanabilir. |
+| **Users → Reservations** | 1:N | Bir kullanıcı birden fazla etkinlik rezervasyonu yapabilir. |
+| **Events → Reservations** | 1:N | Bir etkinliğin birden fazla rezervasyonu olabilir. |
+| **Users ↔ Artworks** (Favorites) | N:M | Bir kullanıcı birden fazla eseri favorileyebilir; `Favorites` tablosu bu bağı kurar. |
+| **Orders → OrderDetails → Artworks** | 1:N / N:1 | Bir sipariş birden çok eser içerebilir; `OrderDetails` ara tablodur. |
+| **Comments → CommentVotes** | 1:N | Bir yorum birden fazla kullanıcıdan oy alabilir. |
+| **Comments → Comments** (Self Join) | 1:N | Admin yanıtları `ParentCommentID` ile asıl yoruma bağlanır. |
+| **Users → SavedComparisons** | 1:N | Kullanıcı, karşılaştırdığı eser/etkinlik gruplarını kaydedip sonradan tekrar açabilir. |
