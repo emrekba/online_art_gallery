@@ -74,6 +74,70 @@ function navigate(page) {
 
 // ===== RENDER HOME =====
 function renderHome() {
+  // --- Hero Stats (gerçek veriden) ---
+  const artCount = artworks.length;
+  // Satıcılar da sanatçı sayılıyor: artists + eserlerde/etkinliklerde adı geçen benzersiz satıcılar
+  const sellerNames = new Set([
+    ...artworks.map(a => a.sellerName).filter(Boolean),
+    ...events.map(e => e.sellerName).filter(Boolean)
+  ]);
+  const artistCount = artists.length + sellerNames.size;
+  const evtCount = events.length;
+
+  const statEls = document.querySelectorAll('.hero-stats .stat');
+  if (statEls[0]) {
+    const numEl = statEls[0].querySelector('.stat-num');
+    if (numEl) { numEl.dataset.target = artCount; numEl.textContent = '0'; }
+  }
+  if (statEls[1]) {
+    const numEl = statEls[1].querySelector('.stat-num');
+    if (numEl) { numEl.dataset.target = artistCount; numEl.textContent = '0'; }
+  }
+  if (statEls[2]) {
+    const numEl = statEls[2].querySelector('.stat-num');
+    if (numEl) { numEl.dataset.target = evtCount; numEl.textContent = '0'; }
+  }
+  animateStats();
+
+  // --- Hero Showcase Kartları (ilk 3 eser) ---
+  if (artworks.length > 0) {
+    const main = artworks[0];
+    const mainArtist = artists.find(ar => ar.id === main.artistId);
+    const showcaseMain = document.getElementById('showcase-main');
+    if (showcaseMain) {
+      showcaseMain.innerHTML = `
+        <div class="artwork-img-wrap">
+          <div class="artwork-placeholder" style="background:${main.gradient}; width:100%; height:100%; border-radius:12px;"></div>
+        </div>
+        <div class="artwork-info">
+          <span class="artwork-cat">${main.category}</span>
+          <h3>${main.title}</h3>
+          <div class="artwork-meta">
+            <span class="artist">${mainArtist ? mainArtist.name : (main.sellerName || '')}</span>
+            <span class="price">₺${main.price.toLocaleString('tr-TR')}</span>
+          </div>
+        </div>`;
+    }
+  }
+  if (artworks.length > 1) {
+    const top = artworks[1];
+    const topEl = document.getElementById('showcase-top');
+    if (topEl) {
+      topEl.innerHTML = `
+        <div class="artwork-placeholder" style="background:${top.gradient}; width:100%; height:80px; border-radius:8px; margin-bottom:6px;"></div>
+        <span class="mini-label">${top.category} / ₺${top.price.toLocaleString('tr-TR')}</span>`;
+    }
+  }
+  if (artworks.length > 2) {
+    const bot = artworks[2];
+    const botEl = document.getElementById('showcase-bottom');
+    if (botEl) {
+      botEl.innerHTML = `
+        <div class="artwork-placeholder" style="background:${bot.gradient}; width:100%; height:80px; border-radius:8px; margin-bottom:6px;"></div>
+        <span class="mini-label">${bot.category} / ₺${bot.price.toLocaleString('tr-TR')}</span>`;
+    }
+  }
+
   // Featured artworks (first 4)
   const grid = document.getElementById('home-artworks-grid');
   grid.innerHTML = artworks.slice(0,4).map(a => artworkCard(a)).join('');
@@ -87,6 +151,7 @@ function renderHome() {
       <h4>${a.name}</h4><p>${a.bio}</p>
     </div>`).join('');
 }
+
 
 // ===== ARTWORK CARD =====
 function artworkCard(a) {
